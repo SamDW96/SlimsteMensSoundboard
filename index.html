@@ -45,7 +45,6 @@
             height: 100%;
             max-height: 100dvh;
             max-width: 500px;
-            /* Meer padding aan zijkanten zodat glow niet wordt afgekapt */
             padding: 15px 20px; 
             overflow-y: auto; 
         }
@@ -59,7 +58,6 @@
         }
 
         .sound-btn {
-            /* Standaard transparante rand voorkomt verspringen bij activeren */
             border: 4px solid transparent; 
             border-radius: 12px;
             color: white;
@@ -79,8 +77,6 @@
             padding: 10px;
         }
 
-        /* Algemene active state voor simpele knoppen (Leader, Bumper, Finale) */
-        /* We sluiten #panel-clock hier specifiek uit om de animatie glitch te fixen */
         .sound-btn:not(#panel-clock):active { 
             transform: scale(0.98); 
             opacity: 0.9; 
@@ -100,7 +96,6 @@
             margin-top: 2px;
         }
 
-        /* Kleuren */
         #btn-leader { background-color: var(--leader-color); }
         #btn-bumper { background-color: var(--bumper-color); }
         #btn-finale { background-color: var(--finale-color); }
@@ -113,10 +108,9 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between; 
-            padding: 10px; /* Iets minder padding intern om ruimte te geven aan inhoud */
+            padding: 10px;
         }
         
-        /* 3a. Klikbare bovenkant (Timer) */
         .clock-top-section {
             width: 100%;
             flex-grow: 1; 
@@ -124,10 +118,9 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            transition: transform 0.1s; /* Voor de klik animatie */
+            transition: transform 0.1s;
         }
         
-        /* HIER zit de fix: Alleen het bovenste deel animeert bij klikken */
         .clock-top-section:active {
             transform: scale(0.97);
             opacity: 0.9;
@@ -142,7 +135,6 @@
             text-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
 
-        /* 3b. Auto-stop (klein) */
         .auto-stop-container {
             display: none; 
             flex-direction: row;
@@ -180,7 +172,6 @@
             color: var(--clock-color);
         }
 
-        /* 3c. Actie Knoppen (Juist/Fout/Stop) */
         .clock-actions-wrapper {
             display: none; 
             width: 100%;
@@ -201,7 +192,6 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
             transition: transform 0.1s;
         }
-        /* Eigen animatie voor de subknoppen */
         .action-btn:active { transform: scale(0.95); opacity: 0.9; }
 
         #btn-juist { background-color: var(--juist-color); }
@@ -222,10 +212,8 @@
         
         .content-wrapper { position: relative; z-index: 2; display:flex; flex-direction:column; align-items:center; }
 
-        /* De nieuwe, opvallendere 'playing' stijl */
         .playing {
-            border-color: white !important; /* Maak de transparante rand wit */
-            /* Dubbele schaduw: 1 glow naar buiten, 1 glow naar binnen */
+            border-color: white !important; 
             box-shadow: 0 0 20px rgba(255, 255, 255, 0.8), inset 0 0 10px rgba(255,255,255,0.5) !important;
             filter: brightness(1.1);
         }
@@ -251,7 +239,6 @@
         </div>
         
         <div id="panel-clock" class="sound-btn">
-            
             <div class="clock-top-section" id="clock-click-target">
                 <span class="label-large">Klok</span>
                 <span id="clock-timer">00:00</span>
@@ -277,6 +264,38 @@
     </div>
 
     <script>
+        // --- WAKE LOCK (SCHERM AAN HOUDEN) ---
+        let wakeLock = null;
+
+        async function activateWakeLock() {
+            if ('wakeLock' in navigator) {
+                try {
+                    // Als we al een lock hebben, hoeven we niks te doen
+                    if (wakeLock !== null) return;
+                    
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('Screen Wake Lock active');
+
+                    // Als de gebruiker switcht van tab en terugkomt, moeten we opnieuw locken
+                    wakeLock.addEventListener('release', () => {
+                        console.log('Screen Wake Lock released');
+                        wakeLock = null;
+                    });
+
+                } catch (err) {
+                    console.error('Wake Lock error:', err);
+                }
+            }
+        }
+
+        // Zorg dat we opnieuw proberen te locken als de pagina weer zichtbaar wordt
+        document.addEventListener('visibilitychange', async () => {
+            if (wakeLock === null && document.visibilityState === 'visible') {
+                activateWakeLock();
+            }
+        });
+
+
         // --- AUDIO CONFIG ---
         const audioFiles = {
             leader:   new Audio('leader.mp3'),
@@ -331,6 +350,9 @@
         }
 
         function playSingle(audioObj, btnElement) {
+            // PROBEER SCHERM AAN TE HOUDEN
+            activateWakeLock();
+
             audioObj.currentTime = 0;
             audioObj.play().catch(e => console.error("Play error:", e));
             if(btnElement) btnElement.classList.add('playing');
@@ -343,14 +365,15 @@
         }
 
         function playSFX(path, btnElement) {
+            // OOK HIER SCHERM AAN HOUDEN
+            activateWakeLock();
+            
             new Audio(path).play(); 
-            // Subtiele flash, geen border class nodig want active state doet het werk
         }
 
         // --- KLOK LOGICA ---
         function startClockLogic() {
             stopAllMainTracks(); 
-            
             playSingle(audioFiles.clock, els.clockPanel);
             
             els.clockTimer.style.display = 'block';
@@ -395,14 +418,12 @@
         function performAutoStop() {
             stopClockLogic(); 
             playSingle(audioFiles.stopklok, els.stop); 
-            // Visuele flash op de stopknop
             els.stop.classList.add('playing');
             setTimeout(() => els.stop.classList.remove('playing'), 500);
         }
 
         // --- EVENT LISTENERS ---
 
-        // 1. LEADER
         els.leader.addEventListener('click', () => {
             if (!audioFiles.leader.paused) {
                 stopSingle(audioFiles.leader, els.leader);
@@ -426,14 +447,12 @@
             playSingle(audioFiles.bumper, els.bumper);
         });
 
-        // 2. BUMPER
         els.bumper.addEventListener('click', () => {
             stopAllMainTracks(); 
             playSingle(audioFiles.bumper, els.bumper);
         });
         audioFiles.bumper.addEventListener('ended', () => els.bumper.classList.remove('playing'));
 
-        // 3. KLOK START/STOP (Klik op bovenste deel)
         els.clockTarget.addEventListener('click', () => {
             if (!audioFiles.clock.paused) {
                 stopClockLogic();
@@ -442,10 +461,10 @@
             }
         });
 
-        // 3b. AUTO-STOP KNOPJES
         els.autoStopBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation(); 
+                activateWakeLock(); // Ook hier locken voor de zekerheid
                 const time = parseInt(btn.dataset.time);
 
                 if (autoStopDuration === time) {
@@ -459,7 +478,6 @@
             });
         });
 
-        // 3c. INTERNE ACTIE KNOPPEN
         els.juist.addEventListener('click', (e) => {
             e.stopPropagation(); 
             playSFX(sfxPaths.juist, els.juist);
@@ -477,7 +495,6 @@
         });
         audioFiles.stopklok.addEventListener('ended', () => els.stop.classList.remove('playing'));
 
-        // 4. FINALE
         els.finale.addEventListener('click', () => {
             stopAllMainTracks();
             playSingle(audioFiles.finale, els.finale);
