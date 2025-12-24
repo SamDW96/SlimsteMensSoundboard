@@ -7,20 +7,20 @@
     <style>
         /* --- 1. GLOBAL RESET & VARIABELEN --- */
         * {
-            box-sizing: border-box; /* Zorgt dat padding de breedte niet verpest */
-            -webkit-tap-highlight-color: transparent; /* Verwijdert grijze tik-kleur op mobiel */
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
         :root {
             --bg-color: #1a1a1a;
             --text-color: #ffffff;
-            --leader-color: #2ecc71; /* Groen */
-            --bumper-color: #e74c3c; /* Rood */
-            --clock-color: #3498db;  /* Blauw */
-            --juist-color: #4cd137;  /* Iets frisser groen */
-            --fout-color: #c23616;   /* Dieper rood */
-            --stop-color: #7f8c8d;   /* Grijs */
-            --finale-color: #9b59b6; /* Paars */
+            --leader-color: #2ecc71; 
+            --bumper-color: #e74c3c; 
+            --clock-color: #3498db;  
+            --juist-color: #4cd137;  
+            --fout-color: #c23616;   
+            --stop-color: #7f8c8d;   
+            --finale-color: #9b59b6; 
         }
 
         body {
@@ -29,42 +29,42 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
             padding: 0;
-            height: 100vh;
+            height: 100dvh; 
             width: 100vw;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            overflow: hidden; /* Voorkomt scrollen */
-            touch-action: manipulation;
         }
 
         .container {
             display: flex;
             flex-direction: column;
-            gap: 12px; /* Ruimte tussen de rijen */
-            width: 90%;
-            height: 94%; /* Iets meer marge boven/onder */
-            max-width: 500px; /* Iets smaller voor mooiere mobiele look */
+            gap: 12px;
+            width: 100%;
+            height: 100%;
+            max-height: 100dvh;
+            max-width: 500px;
+            /* Meer padding aan zijkanten zodat glow niet wordt afgekapt */
+            padding: 15px 20px; 
+            overflow-y: auto; 
         }
 
-        /* --- 2. LAYOUT RIJEN --- */
-        
-        /* Rij 1: Intro & Thema naast elkaar */
+        /* --- 2. BASIS KNOP STIJLEN --- */
         .control-row {
             display: flex;
             gap: 12px;
-            flex: 1; /* Neemt 1 deel verticale ruimte */
             width: 100%;
+            flex: 0 0 120px; 
         }
 
-        /* Algemene Knop Stijl */
         .sound-btn {
-            border: none;
+            /* Standaard transparante rand voorkomt verspringen bij activeren */
+            border: 4px solid transparent; 
             border-radius: 12px;
             color: white;
             cursor: pointer;
-            transition: transform 0.1s, opacity 0.2s;
+            transition: transform 0.1s, border-color 0.2s, box-shadow 0.2s;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
             user-select: none;
             -webkit-user-select: none;
@@ -79,12 +79,13 @@
             padding: 10px;
         }
 
-        .sound-btn:active {
-            transform: scale(0.98);
-            opacity: 0.9;
+        /* Algemene active state voor simpele knoppen (Leader, Bumper, Finale) */
+        /* We sluiten #panel-clock hier specifiek uit om de animatie glitch te fixen */
+        .sound-btn:not(#panel-clock):active { 
+            transform: scale(0.98); 
+            opacity: 0.9; 
         }
 
-        /* Typografie */
         .label-large {
             font-size: 1.4rem;
             font-weight: 800;
@@ -99,37 +100,49 @@
             margin-top: 2px;
         }
 
-        /* Kleuren toewijzen */
+        /* Kleuren */
         #btn-leader { background-color: var(--leader-color); }
         #btn-bumper { background-color: var(--bumper-color); }
         #btn-finale { background-color: var(--finale-color); }
         
-        /* --- 3. KLOK PANEEL (Rij 2) --- */
+        /* --- 3. HET KLOK PANEEL --- */
         #panel-clock {
             background-color: var(--clock-color);
-            flex: 1.5; /* De klok is 1.5x zo hoog als de bovenste knoppen */
-            width: 100%; /* Forceer breedte binnen container */
+            flex-grow: 1; 
+            min-height: 200px; 
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between; 
+            padding: 10px; /* Iets minder padding intern om ruimte te geven aan inhoud */
         }
         
-        .clock-main-click-area {
-            flex-grow: 1;
+        /* 3a. Klikbare bovenkant (Timer) */
+        .clock-top-section {
             width: 100%;
+            flex-grow: 1; 
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
+            transition: transform 0.1s; /* Voor de klik animatie */
+        }
+        
+        /* HIER zit de fix: Alleen het bovenste deel animeert bij klikken */
+        .clock-top-section:active {
+            transform: scale(0.97);
+            opacity: 0.9;
         }
 
         #clock-timer {
-            font-size: 2.5rem; /* Iets groter gemaakt voor leesbaarheid */
-            font-weight: bold;
+            font-size: 3.5rem; 
+            font-weight: 800;
             font-variant-numeric: tabular-nums;
-            margin-top: 8px;
+            margin-top: 5px;
             display: none; 
-            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
 
-        /* Auto-stop controls */
+        /* 3b. Auto-stop (klein) */
         .auto-stop-container {
             display: none; 
             flex-direction: row;
@@ -139,8 +152,7 @@
             background: rgba(0,0,0,0.2);
             padding: 6px 12px;
             border-radius: 20px;
-            margin-bottom: 12px;
-            z-index: 10;
+            margin: 10px 0; 
         }
 
         .auto-stop-label {
@@ -163,36 +175,40 @@
             min-width: 40px;
             text-align: center;
         }
-
         .auto-stop-btn.active {
             background: white;
             color: var(--clock-color);
-            border-color: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
 
-        /* --- 4. SUB KNOPPEN (Rij 3) --- */
-        .sub-controls {
+        /* 3c. Actie Knoppen (Juist/Fout/Stop) */
+        .clock-actions-wrapper {
             display: none; 
-            grid-template-columns: 1fr 1fr 1fr; /* 3 gelijke kolommen */
-            gap: 12px;
-            flex: 0 0 70px; /* Vaste hoogte */
             width: 100%;
-            opacity: 0;
-            transition: opacity 0.3s ease;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-top: auto; 
         }
-        .sub-controls.active { display: grid; opacity: 1; }
-
-        .sub-btn {
+        
+        .action-btn {
+            border: none;
+            border-radius: 8px;
+            padding: 15px 5px;
             font-size: 1rem;
             font-weight: 800;
             text-transform: uppercase;
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: transform 0.1s;
         }
-        #btn-juist  { background-color: var(--juist-color); }
-        #btn-fout   { background-color: var(--fout-color); }
-        #btn-stop   { background-color: var(--stop-color); }
+        /* Eigen animatie voor de subknoppen */
+        .action-btn:active { transform: scale(0.95); opacity: 0.9; }
 
-        /* --- 5. VISUELE EXTRA'S --- */
+        #btn-juist { background-color: var(--juist-color); }
+        #btn-fout  { background-color: var(--fout-color); }
+        #btn-stop  { background-color: var(--stop-color); }
+
+        /* --- 4. VISUELE STYLING (PLAYING STATE) --- */
         .progress-fill {
             position: absolute;
             bottom: 0;
@@ -206,8 +222,11 @@
         
         .content-wrapper { position: relative; z-index: 2; display:flex; flex-direction:column; align-items:center; }
 
+        /* De nieuwe, opvallendere 'playing' stijl */
         .playing {
-            box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.6) !important; /* Strakkere border glow */
+            border-color: white !important; /* Maak de transparante rand wit */
+            /* Dubbele schaduw: 1 glow naar buiten, 1 glow naar binnen */
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.8), inset 0 0 10px rgba(255,255,255,0.5) !important;
             filter: brightness(1.1);
         }
     </style>
@@ -232,7 +251,8 @@
         </div>
         
         <div id="panel-clock" class="sound-btn">
-            <div class="clock-main-click-area" id="clock-click-target">
+            
+            <div class="clock-top-section" id="clock-click-target">
                 <span class="label-large">Klok</span>
                 <span id="clock-timer">00:00</span>
             </div>
@@ -243,15 +263,15 @@
                 <div class="auto-stop-btn" data-time="30">30s</div>
                 <div class="auto-stop-btn" data-time="60">1m</div>
             </div>
-        </div>
-        
-        <div id="clock-subs" class="sub-controls">
-            <button id="btn-juist" class="sound-btn sub-btn">Juist</button>
-            <button id="btn-fout" class="sound-btn sub-btn">Fout</button>
-            <button id="btn-stop" class="sound-btn sub-btn">Stop</button>
+
+            <div class="clock-actions-wrapper" id="clock-actions">
+                <button id="btn-juist" class="action-btn">Juist</button>
+                <button id="btn-fout" class="action-btn">Fout</button>
+                <button id="btn-stop" class="action-btn">Stop</button>
+            </div>
         </div>
 
-        <button id="btn-finale" class="sound-btn" style="flex: 1;">
+        <button id="btn-finale" class="sound-btn" style="flex: 0 0 100px;">
             <span class="label-large">Finale</span>
         </button>
     </div>
@@ -266,14 +286,12 @@
             finale:   new Audio('finale.mp3')
         };
         
-        // Loop instellingen
         audioFiles.leader.loop   = false; 
         audioFiles.bumper.loop   = false;
         audioFiles.clock.loop    = true;  
         audioFiles.stopklok.loop = false;
         audioFiles.finale.loop   = false;
 
-        // Effecten
         const sfxPaths = { juist: 'juist.mp3', fout: 'fout.mp3' };
 
         // --- DOM ELEMENTEN ---
@@ -282,17 +300,17 @@
             leaderProgress: document.getElementById('leader-progress'),
             bumper: document.getElementById('btn-bumper'),
             
-            // Klok panel
             clockPanel: document.getElementById('panel-clock'),
             clockTarget: document.getElementById('clock-click-target'),
             clockTimer: document.getElementById('clock-timer'),
             autoStopWrapper: document.getElementById('auto-stop-wrapper'),
             autoStopBtns: document.querySelectorAll('.auto-stop-btn'),
             
-            subs:   document.getElementById('clock-subs'),
+            clockActions: document.getElementById('clock-actions'),
             juist:  document.getElementById('btn-juist'),
             fout:   document.getElementById('btn-fout'),
             stop:   document.getElementById('btn-stop'),
+            
             finale: document.getElementById('btn-finale')
         };
 
@@ -326,8 +344,7 @@
 
         function playSFX(path, btnElement) {
             new Audio(path).play(); 
-            btnElement.classList.add('playing');
-            setTimeout(() => btnElement.classList.remove('playing'), 200);
+            // Subtiele flash, geen border class nodig want active state doet het werk
         }
 
         // --- KLOK LOGICA ---
@@ -336,9 +353,9 @@
             
             playSingle(audioFiles.clock, els.clockPanel);
             
-            els.subs.classList.add('active');
             els.clockTimer.style.display = 'block';
             els.autoStopWrapper.style.display = 'flex';
+            els.clockActions.style.display = 'grid'; 
             
             clockStartTime = Date.now();
             els.clockTimer.innerText = "00:00";
@@ -368,16 +385,17 @@
             if (clockInterval) clearInterval(clockInterval);
             clockInterval = null;
             
-            els.subs.classList.remove('active');
             els.clockTimer.style.display = 'none';
             els.autoStopWrapper.style.display = 'none';
+            els.clockActions.style.display = 'none';
+            
             els.clockTimer.innerText = "00:00";
         }
 
         function performAutoStop() {
             stopClockLogic(); 
             playSingle(audioFiles.stopklok, els.stop); 
-            
+            // Visuele flash op de stopknop
             els.stop.classList.add('playing');
             setTimeout(() => els.stop.classList.remove('playing'), 500);
         }
@@ -415,7 +433,7 @@
         });
         audioFiles.bumper.addEventListener('ended', () => els.bumper.classList.remove('playing'));
 
-        // 3. KLOK
+        // 3. KLOK START/STOP (Klik op bovenste deel)
         els.clockTarget.addEventListener('click', () => {
             if (!audioFiles.clock.paused) {
                 stopClockLogic();
@@ -427,7 +445,7 @@
         // 3b. AUTO-STOP KNOPJES
         els.autoStopBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
-                e.stopPropagation(); // Voorkom start/stop van de klok zelf
+                e.stopPropagation(); 
                 const time = parseInt(btn.dataset.time);
 
                 if (autoStopDuration === time) {
@@ -441,11 +459,19 @@
             });
         });
 
-        // 3c. SUBS
-        els.juist.addEventListener('click', () => playSFX(sfxPaths.juist, els.juist));
-        els.fout.addEventListener('click', () => playSFX(sfxPaths.fout, els.fout));
+        // 3c. INTERNE ACTIE KNOPPEN
+        els.juist.addEventListener('click', (e) => {
+            e.stopPropagation(); 
+            playSFX(sfxPaths.juist, els.juist);
+        });
         
-        els.stop.addEventListener('click', () => {
+        els.fout.addEventListener('click', (e) => {
+            e.stopPropagation(); 
+            playSFX(sfxPaths.fout, els.fout);
+        });
+        
+        els.stop.addEventListener('click', (e) => {
+            e.stopPropagation(); 
             stopClockLogic();
             playSingle(audioFiles.stopklok, els.stop);
         });
