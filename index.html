@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Soundboard</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --text-color: #ffffff;
+            --leader-color: #2ecc71; /* Groen */
+            --bumper-color: #e74c3c; /* Rood */
+            --clock-color: #3498db;  /* Blauw */
+            --juist-color: #27ae60;  /* Donkergroen */
+            --fout-color: #c0392b;   /* Donkerrood */
+            --stop-color: #7f8c8d;   /* Grijs */
+            --finale-color: #9b59b6; /* Paars */
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            touch-action: manipulation;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 90%;
+            height: 95%;
+            max-width: 600px;
+            padding: 10px 0;
+        }
+
+        /* Layout voor Top Rij (Leader + Bumper) */
+        .control-row {
+            display: flex;
+            gap: 15px;
+            flex: 1; 
+            width: 100%;
+        }
+
+        button {
+            border: none;
+            border-radius: 12px;
+            font-size: 1.3rem; 
+            font-weight: bold;
+            color: white;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            user-select: none;
+            -webkit-user-select: none;
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .full-width-btn {
+            flex: 1;
+            width: 100%;
+        }
+
+        button:active {
+            transform: scale(0.97);
+            opacity: 0.9;
+        }
+
+        /* Kleuren */
+        #btn-leader { background-color: var(--leader-color); }
+        #btn-bumper { background-color: var(--bumper-color); }
+        #btn-clock  { background-color: var(--clock-color); }
+        #btn-finale { background-color: var(--finale-color); }
+        
+        /* Sub knoppen */
+        #btn-juist  { background-color: var(--juist-color); }
+        #btn-fout   { background-color: var(--fout-color); }
+        #btn-stop   { background-color: var(--stop-color); }
+
+        /* Progress Bar in Leader knop */
+        .progress-fill {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 10px;
+            background-color: rgba(255, 255, 255, 0.8);
+            width: 0%;
+            transition: width 0.1s linear;
+            z-index: 1;
+        }
+        
+        button span {
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Sub-controls Container */
+        .sub-controls {
+            display: none; 
+            grid-template-columns: 1fr 1fr 1fr; 
+            gap: 10px;
+            flex: 0 0 80px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .sub-controls.active {
+            display: grid;
+            opacity: 1;
+        }
+
+        .playing {
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.6) !important;
+            border: 3px solid white;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="control-row">
+            <button id="btn-leader">
+                <span>Leader</span>
+                <div class="progress-fill" id="leader-progress"></div>
+            </button>
+            <button id="btn-bumper">
+                <span>Bumper</span>
+            </button>
+        </div>
+        
+        <button id="btn-clock" class="full-width-btn"><span>Clock</span></button>
+        
+        <div id="clock-subs" class="sub-controls">
+            <button id="btn-juist"><span>Juist</span></button>
+            <button id="btn-fout"><span>Fout</span></button>
+            <button id="btn-stop"><span>Stop</span></button>
+        </div>
+
+        <button id="btn-finale" class="full-width-btn"><span>Finale</span></button>
+    </div>
+
+    <script>
+        // --- AUDIO SETUP ---
+        // Hier staan nu EXACT de namen uit je screenshot
+        const audioFiles = {
+            leader:   new Audio('leader.mp3'),
+            bumper:   new Audio('bumper.mp3'),
+            clock:    new Audio('klok.mp3'),      // Let op: bestand heet 'klok.mp3' in je screenshot
+            stopklok: new Audio('stopklok.mp3'),  // NIEUW
+            finale:   new Audio('finale.mp3')
+        };
+        
+        // Settings
+        audioFiles.leader.loop   = false; 
+        audioFiles.bumper.loop   = false;
+        audioFiles.clock.loop    = true;  
+        audioFiles.stopklok.loop = false;
+        audioFiles.finale.loop   = false;
+
+        // Effecten (juist.mp3 ipv goed.mp3)
+        const sfxPaths = { juist: 'juist.mp3', fout: 'fout.mp3' };
+
+        // --- DOM ELEMENTEN ---
+        const els = {
+            leader: document.getElementById('btn-leader'),
+            leaderProgress: document.getElementById('leader-progress'),
+            bumper: document.getElementById('btn-bumper'),
+            clock:  document.getElementById('btn-clock'),
+            finale: document.getElementById('btn-finale'),
+            subs:   document.getElementById('clock-subs'),
+            juist:  document.getElementById('btn-juist'),
+            fout:   document.getElementById('btn-fout'),
+            stop:   document.getElementById('btn-stop')
+        };
+
+        // --- PLAYBACK LOGIC ---
+
+        function stopAllMainTracks() {
+            stopSingle(audioFiles.leader, els.leader);
+            stopSingle(audioFiles.clock, els.clock);
+            stopSingle(audioFiles.bumper, els.bumper);
+            stopSingle(audioFiles.finale, els.finale);
+            stopSingle(audioFiles.stopklok, els.stop);
+            
+            els.subs.classList.remove('active');
+            els.leaderProgress.style.width = '0%';
+        }
+
+        function playSingle(audioObj, btnElement) {
+            audioObj.currentTime = 0;
+            audioObj.play().catch(e => console.error(e));
+            if(btnElement) btnElement.classList.add('playing');
+        }
+
+        function stopSingle(audioObj, btnElement) {
+            audioObj.pause();
+            audioObj.currentTime = 0;
+            if(btnElement) btnElement.classList.remove('playing');
+        }
+
+        function playSFX(path, btnElement) {
+            new Audio(path).play(); 
+            btnElement.classList.add('playing');
+            setTimeout(() => btnElement.classList.remove('playing'), 200);
+        }
+
+        // --- EVENT LISTENERS ---
+
+        // 1. LEADER 
+        els.leader.addEventListener('click', () => {
+            if (!audioFiles.leader.paused) {
+                stopSingle(audioFiles.leader, els.leader);
+                els.leaderProgress.style.width = '0%';
+            } else {
+                stopAllMainTracks();
+                playSingle(audioFiles.leader, els.leader);
+            }
+        });
+
+        audioFiles.leader.addEventListener('timeupdate', () => {
+            if (audioFiles.leader.duration) {
+                const percentage = (audioFiles.leader.currentTime / audioFiles.leader.duration) * 100;
+                els.leaderProgress.style.width = percentage + '%';
+            }
+        });
+
+        audioFiles.leader.addEventListener('ended', () => {
+            els.leader.classList.remove('playing');
+            els.leaderProgress.style.width = '0%';
+            playSingle(audioFiles.bumper, els.bumper);
+        });
+
+        // 2. BUMPER
+        els.bumper.addEventListener('click', () => {
+            stopAllMainTracks(); 
+            playSingle(audioFiles.bumper, els.bumper);
+        });
+        audioFiles.bumper.addEventListener('ended', () => els.bumper.classList.remove('playing'));
+
+        // 3. CLOCK
+        els.clock.addEventListener('click', () => {
+            if (!audioFiles.clock.paused) {
+                stopSingle(audioFiles.clock, els.clock);
+                els.subs.classList.remove('active');
+            } else {
+                stopAllMainTracks();
+                playSingle(audioFiles.clock, els.clock);
+                els.subs.classList.add('active');
+            }
+        });
+
+        // 3a. JUIST & FOUT 
+        els.juist.addEventListener('click', () => playSFX(sfxPaths.juist, els.juist));
+        els.fout.addEventListener('click', () => playSFX(sfxPaths.fout, els.fout));
+
+        // 3b. STOP KLOK (Nu met geluid!)
+        els.stop.addEventListener('click', () => {
+            // Stop de tik-tak klok
+            stopSingle(audioFiles.clock, els.clock);
+            // Verberg de knoppen
+            els.subs.classList.remove('active');
+            // Speel het 'stopklok' geluid
+            playSingle(audioFiles.stopklok, els.stop);
+        });
+        audioFiles.stopklok.addEventListener('ended', () => els.stop.classList.remove('playing'));
+
+
+        // 4. FINALE
+        els.finale.addEventListener('click', () => {
+            stopAllMainTracks();
+            playSingle(audioFiles.finale, els.finale);
+        });
+        audioFiles.finale.addEventListener('ended', () => els.finale.classList.remove('playing'));
+
+    </script>
+</body>
+</html>
