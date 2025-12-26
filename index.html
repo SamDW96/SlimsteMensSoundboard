@@ -15,7 +15,7 @@
             /* STANDAARD (DARK) KLEUREN */
             --bg-color: #1a1a1a;
             --text-color: #ffffff;
-            --panel-bg: rgba(255, 255, 255, 0.05); /* Achtergrond voor settings */
+            --panel-bg: rgba(255, 255, 255, 0.08); 
             
             --leader-color: #2ecc71; 
             --bumper-color: #e74c3c; 
@@ -35,7 +35,6 @@
             --text-color: #1a1a1a;
             --panel-bg: rgba(0, 0, 0, 0.05);
 
-            /* Iets zachtere/donkerdere tinten voor contrast op wit */
             --leader-color: #27ae60; 
             --bumper-color: #c0392b; 
             --clock-color: #2980b9;  
@@ -44,7 +43,7 @@
             --stop-color: #95a5a6;   
             --finale-color: #8e44ad; 
             
-            --glow-color: rgba(0, 0, 0, 0.5); /* Donkere glow in light mode */
+            --glow-color: rgba(0, 0, 0, 0.3); 
             --border-active: #333;
         }
 
@@ -66,11 +65,13 @@
             display: flex;
             flex-direction: column;
             gap: 12px;
-            width: 90%;
+            /* BREEDTE FIX: Terug naar bijna volledig scherm */
+            width: 96%; 
             height: 100%;
             max-height: 100dvh;
             max-width: 500px;
-            padding: 10px 20px 20px 20px; 
+            /* Padding verminderd zodat het niet ingesprongen lijkt */
+            padding: 10px 2px; 
             overflow-y: auto; 
         }
 
@@ -94,7 +95,6 @@
             font-size: 1.2rem;
             cursor: pointer;
             padding: 5px;
-            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -109,7 +109,6 @@
             margin-left: 20px;
         }
 
-        /* Slider Styling */
         input[type=range] {
             -webkit-appearance: none;
             width: 100px;
@@ -126,12 +125,13 @@
             border-radius: 50%;
             background: var(--text-color);
             cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
         }
 
         /* --- 3. BASIS KNOP STIJLEN --- */
         .control-row {
             display: flex;
-            gap: 12px;
+            gap: 10px; /* Iets minder gap voor meer knopruimte */
             width: 100%;
             flex: 0 0 120px; 
         }
@@ -142,7 +142,7 @@
             color: white;
             cursor: pointer;
             transition: transform 0.1s, border-color 0.2s, box-shadow 0.2s;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
             user-select: none;
             -webkit-user-select: none;
             position: relative;
@@ -199,11 +199,7 @@
             justify-content: center;
             transition: transform 0.1s;
         }
-        
-        .clock-top-section:active {
-            transform: scale(0.97);
-            opacity: 0.9;
-        }
+        .clock-top-section:active { transform: scale(0.97); opacity: 0.9; }
 
         #clock-timer {
             font-size: 3.5rem; 
@@ -304,7 +300,8 @@
         
         <div class="settings-bar">
             <button class="theme-toggle" id="btn-theme-toggle" title="Wissel thema">
-                <span id="theme-icon">🌓</span> </button>
+                <span id="theme-icon">🌓</span> 
+            </button>
 
             <div class="volume-control">
                 <span>🔊</span>
@@ -325,7 +322,6 @@
                     <span class="label-large">Thema</span>
                     <span class="label-small">bumper</span>
                 </div>
-                <div class="progress-fill" id="progress-bumper"></div>
             </button>
         </div>
         
@@ -353,7 +349,6 @@
             <div class="content-wrapper">
                 <span class="label-large">Finale</span>
             </div>
-            <div class="progress-fill" id="progress-finale"></div>
         </button>
     </div>
 
@@ -390,7 +385,6 @@
 
         const sfxPaths = { juist: 'juist.mp3', fout: 'fout.mp3' };
         
-        // Globale volume variabele
         let globalVolume = 1.0;
 
         // --- DOM ELEMENTEN ---
@@ -399,7 +393,7 @@
             progLeader: document.getElementById('progress-leader'),
             
             bumper: document.getElementById('btn-bumper'),
-            progBumper: document.getElementById('progress-bumper'), // Nieuw
+            // Geen progBumper meer
             
             clockPanel: document.getElementById('panel-clock'),
             clockTarget: document.getElementById('clock-click-target'),
@@ -412,7 +406,7 @@
             stop:   document.getElementById('btn-stop'),
             
             finale: document.getElementById('btn-finale'),
-            progFinale: document.getElementById('progress-finale'), // Nieuw
+            // Geen progFinale meer
 
             // Settings
             themeBtn: document.getElementById('btn-theme-toggle'),
@@ -425,22 +419,16 @@
         let clockStartTime = null;
         let autoStopDuration = null; 
         
-        // Thema Statussen: 'auto' -> 'light' -> 'dark'
         let currentThemeMode = 'auto';
 
         // --- SETTINGS LOGICA ---
-        
-        // 1. Thema Toggle
         function updateTheme() {
             const root = document.documentElement;
             const icon = els.themeIcon;
-            
-            // Verwijder harde attributen eerst
             root.removeAttribute('data-theme');
 
             if (currentThemeMode === 'auto') {
-                icon.innerText = "🌓"; // Auto icon
-                // Browser regelt het via CSS (standaard) of media query
+                icon.innerText = "🌓"; 
                 if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
                     root.setAttribute('data-theme', 'light');
                 }
@@ -449,7 +437,6 @@
                 root.setAttribute('data-theme', 'light');
             } else if (currentThemeMode === 'dark') {
                 icon.innerText = "🌙";
-                // Geen attribuut nodig, dark is default in :root
             }
         }
 
@@ -460,36 +447,28 @@
             updateTheme();
         });
 
-        // Luister naar systeem wijzigingen als we op auto staan
         window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', updateTheme);
-        // Init
         updateTheme();
 
-
-        // 2. Volume Slider
         els.volumeSlider.addEventListener('input', (e) => {
             globalVolume = parseFloat(e.target.value);
-            // Update alle bestaande audio objecten
             Object.values(audioFiles).forEach(audio => {
                 audio.volume = globalVolume;
             });
         });
-
 
         // --- AUDIO FUNCTIES ---
 
         function stopAllMainTracks() {
             stopSingle(audioFiles.leader, els.leader, els.progLeader);
             stopClockLogic(); 
-            stopSingle(audioFiles.bumper, els.bumper, els.progBumper);
-            stopSingle(audioFiles.finale, els.finale, els.progFinale);
+            stopSingle(audioFiles.bumper, els.bumper);
+            stopSingle(audioFiles.finale, els.finale);
             stopSingle(audioFiles.stopklok, els.stop);
         }
 
         function playSingle(audioObj, btnElement, progElement) {
             activateWakeLock();
-            
-            // Zeker weten dat volume goed staat
             audioObj.volume = globalVolume;
             audioObj.currentTime = 0;
             audioObj.play().catch(e => console.error("Play error:", e));
@@ -508,12 +487,12 @@
         function playSFX(path) {
             activateWakeLock();
             const sfx = new Audio(path);
-            sfx.volume = globalVolume; // Pas volume toe op nieuwe sfx
+            sfx.volume = globalVolume; 
             sfx.play(); 
         }
 
-        // Helper voor progress bars
         function attachProgressHandler(audioObj, progElement) {
+            if(!progElement) return;
             audioObj.addEventListener('timeupdate', () => {
                 if (audioObj.duration) {
                     const pct = (audioObj.currentTime / audioObj.duration) * 100;
@@ -525,15 +504,11 @@
             });
         }
 
-        // Koppel progress bars
+        // Alleen Leader heeft progress
         attachProgressHandler(audioFiles.leader, els.progLeader);
-        attachProgressHandler(audioFiles.bumper, els.progBumper);
-        attachProgressHandler(audioFiles.finale, els.progFinale);
 
+        // --- EVENT LISTENERS ---
 
-        // --- EVENT LISTENERS (KNOPPEN) ---
-
-        // 1. LEADER
         els.leader.addEventListener('click', () => {
             if (!audioFiles.leader.paused) {
                 stopSingle(audioFiles.leader, els.leader, els.progLeader);
@@ -545,23 +520,20 @@
         
         audioFiles.leader.addEventListener('ended', () => {
             els.leader.classList.remove('playing');
-            playSingle(audioFiles.bumper, els.bumper, els.progBumper); // Auto-chain
+            playSingle(audioFiles.bumper, els.bumper); // Auto-chain
         });
 
-        // 2. BUMPER
         els.bumper.addEventListener('click', () => {
             stopAllMainTracks(); 
-            playSingle(audioFiles.bumper, els.bumper, els.progBumper);
+            playSingle(audioFiles.bumper, els.bumper);
         });
         audioFiles.bumper.addEventListener('ended', () => els.bumper.classList.remove('playing'));
 
-        // 3. KLOK
         els.clockTarget.addEventListener('click', () => {
             if (!audioFiles.clock.paused) stopClockLogic();
             else startClockLogic();
         });
 
-        // Auto-stop knoppen
         els.autoStopBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation(); 
@@ -578,7 +550,6 @@
             });
         });
 
-        // Subknoppen
         els.juist.addEventListener('click', (e) => {
             e.stopPropagation(); 
             playSFX(sfxPaths.juist);
@@ -592,21 +563,18 @@
         els.stop.addEventListener('click', (e) => {
             e.stopPropagation(); 
             stopClockLogic();
-            // Stopklok geluid moet ook volume respecteren
             audioFiles.stopklok.volume = globalVolume;
             playSingle(audioFiles.stopklok, els.stop);
         });
         audioFiles.stopklok.addEventListener('ended', () => els.stop.classList.remove('playing'));
 
-        // 4. FINALE
         els.finale.addEventListener('click', () => {
             stopAllMainTracks();
-            playSingle(audioFiles.finale, els.finale, els.progFinale);
+            playSingle(audioFiles.finale, els.finale);
         });
         audioFiles.finale.addEventListener('ended', () => els.finale.classList.remove('playing'));
 
-
-        // --- KLOK LOGICA (INTERNE TIMER) ---
+        // --- KLOK LOGICA ---
         function startClockLogic() {
             stopAllMainTracks(); 
             playSingle(audioFiles.clock, els.clockPanel);
