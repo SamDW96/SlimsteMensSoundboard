@@ -6,6 +6,8 @@
     <title>Soundboard</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" />
 
     <style>
         /* --- 1. GLOBAL RESET & VARIABELEN --- */
@@ -77,7 +79,7 @@
             position: relative;
         }
 
-        /* --- 2. SETTINGS BALK & SVG ICONEN --- */
+        /* --- 2. SETTINGS BALK & ICONEN --- */
         .settings-bar {
             display: flex;
             align-items: center;
@@ -90,14 +92,14 @@
             font-size: 0.9rem;
         }
 
-        .settings-left { display: flex; gap: 10px; align-items: center; }
+        .settings-left { display: flex; gap: 5px; align-items: center; }
 
         .icon-btn {
             background: none;
             border: none;
             color: var(--text-color);
             cursor: pointer;
-            padding: 6px;
+            padding: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -106,14 +108,14 @@
         }
         .icon-btn:hover { background: rgba(255,255,255,0.1); }
         
-        /* De magie voor universele iconen */
-        .icon-svg {
-            width: 24px;
-            height: 24px;
-            fill: currentColor; /* Neemt automatisch de tekstkleur aan */
+        /* De Google Material Symbols Class */
+        .material-symbols-rounded {
+            font-size: 24px;
+            /* Zorgt dat iconen niet geselecteerd kunnen worden als tekst */
+            user-select: none; 
         }
 
-        .remote-active { color: #2ecc71; filter: drop-shadow(0 0 5px rgba(46,204,113,0.5)); }
+        .remote-active { color: #2ecc71; text-shadow: 0 0 10px rgba(46, 204, 113, 0.4); }
 
         .volume-control {
             display: flex;
@@ -121,8 +123,17 @@
             gap: 10px;
             flex-grow: 1;
             justify-content: flex-end;
-            margin-left: 20px;
+            margin-left: 10px;
         }
+        
+        /* Mute knop specifiek */
+        #btn-mute-toggle {
+            cursor: pointer;
+            display: flex; align-items: center;
+            padding: 5px;
+            border-radius: 50%;
+        }
+        #btn-mute-toggle:active { transform: scale(0.9); }
 
         input[type=range] {
             -webkit-appearance: none;
@@ -143,7 +154,7 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.3);
         }
 
-        /* --- 3. REMOTE MODAL & OVERLAY --- */
+        /* --- 3. MODALS --- */
         .modal-overlay {
             position: fixed; top:0; left:0; width:100%; height:100%;
             background: rgba(0,0,0,0.85);
@@ -186,7 +197,6 @@
             margin-bottom: 10px;
         }
 
-        /* Het "Start Scherm" voor Clients */
         #client-start-screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: var(--bg-color); z-index: 500;
@@ -324,29 +334,17 @@
         <div class="settings-bar">
             <div class="settings-left">
                 <button class="icon-btn" id="btn-theme-toggle" title="Wissel thema">
-                    <span id="theme-icon-container">
-                        </span> 
+                    <span class="material-symbols-rounded" id="theme-icon">brightness_auto</span>
                 </button>
                 <button class="icon-btn" id="btn-remote-toggle" title="Remote Play" onclick="openModal()">
-                    <svg class="icon-svg" id="remote-icon" viewBox="0 0 24 24">
-                        <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
-                        <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
-                        <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
-                        <line x1="12" y1="20" x2="12.01" y2="20"></line>
-                        <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M12 20h.01"/>
-                        <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M5 12.55a11 11 0 0 1 14.08 0"/>
-                        <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M1.42 9a16 16 0 0 1 21.16 0"/>
-                        <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
-                    </svg>
+                    <span class="material-symbols-rounded" id="remote-icon">cast</span>
                 </button>
             </div>
 
             <div class="volume-control">
-                <svg class="icon-svg" viewBox="0 0 24 24">
-                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"></polygon>
-                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"></path>
-                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"></path>
-                </svg>
+                <div id="btn-mute-toggle">
+                    <span class="material-symbols-rounded" id="volume-icon">volume_up</span>
+                </div>
                 <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="1">
             </div>
         </div>
@@ -393,18 +391,10 @@
     </div>
 
     <script>
-        // --- ICONS DEFINITIES (SVG) ---
-        const icons = {
-            sun: `<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`,
-            moon: `<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`,
-            auto: `<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"></path></svg>`
-        };
-
-        // --- 1. REMOTE LOGIC (PEERJS) ---
+        // --- 1. REMOTE LOGIC ---
         let peer = null;
         let conn = null;
         let isHost = false;
-        let myPeerId = null;
 
         const modal = document.getElementById('remote-modal');
         const remoteIcon = document.getElementById('remote-icon');
@@ -412,20 +402,18 @@
         function openModal() { modal.classList.remove('hidden'); }
         function closeModal() { modal.classList.add('hidden'); }
 
-        // HOST SETUP
         function setupHost() {
             document.getElementById('remote-menu').classList.add('hidden');
             document.getElementById('host-screen').classList.remove('hidden');
             
             const code = Math.random().toString(36).substring(2, 6).toUpperCase();
             document.getElementById('host-code-display').innerText = code;
-            myPeerId = "sm-" + code; 
-
-            peer = new Peer(myPeerId);
+            
+            peer = new Peer("sm-" + code);
 
             peer.on('open', (id) => {
-                console.log('Host ID:', id);
                 isHost = true;
+                remoteIcon.innerText = "cast_connected"; // Changed icon
                 remoteIcon.classList.add('remote-active');
             });
 
@@ -439,7 +427,6 @@
             peer.on('error', (err) => alert("Connectie fout: " + err));
         }
 
-        // JOIN SETUP
         function setupJoin() {
             document.getElementById('remote-menu').classList.add('hidden');
             document.getElementById('join-screen').classList.remove('hidden');
@@ -449,22 +436,22 @@
             const inputCode = document.getElementById('join-code-input').value.trim().toUpperCase();
             if(inputCode.length < 4) return alert("Code te kort");
             
-            const hostId = "sm-" + inputCode;
             peer = new Peer(); 
 
             peer.on('open', () => {
-                conn = peer.connect(hostId);
+                conn = peer.connect("sm-" + inputCode);
                 conn.on('open', () => {
                     closeModal();
                     document.getElementById('client-start-screen').classList.remove('hidden');
                 });
                 conn.on('data', (data) => handleRemoteCommand(data));
             });
-            peer.on('error', (err) => alert("Kan niet verbinden. Check code."));
+            peer.on('error', (err) => alert("Kan niet verbinden."));
         }
 
         function activateClientAudio() {
             document.getElementById('client-start-screen').classList.add('hidden');
+            remoteIcon.innerText = "cast_connected"; 
             remoteIcon.classList.add('remote-active');
             activateWakeLock();
         }
@@ -488,11 +475,9 @@
             else if(data.action === 'clockStop') stopClockLogic(true);
             else if(data.action === 'sfx') playSFX(sfxPaths[data.payload], true);
             else if(data.action === 'autoStopSet') {
-                const time = data.payload;
-                autoStopDuration = time;
+                autoStopDuration = data.payload;
                 els.autoStopBtns.forEach(b => {
-                    if(parseInt(b.dataset.time) === time) b.classList.add('active');
-                    else b.classList.remove('active');
+                    b.classList.toggle('active', parseInt(b.dataset.time) === autoStopDuration);
                 });
             }
             else if(data.action === 'autoStopClear') {
@@ -500,14 +485,11 @@
                 els.autoStopBtns.forEach(b => b.classList.remove('active'));
             }
             else if(data.action === 'volume') {
-                globalVolume = data.payload;
-                els.volumeSlider.value = globalVolume;
-                Object.values(audioFiles).forEach(a => a.volume = globalVolume);
+                setGlobalVolume(data.payload, true); // true = from remote
             }
         }
 
-
-        // --- 2. EXISTING LOGIC ---
+        // --- 2. CORE LOGIC ---
         
         let wakeLock = null;
         async function activateWakeLock() {
@@ -523,7 +505,6 @@
             if (wakeLock === null && document.visibilityState === 'visible') activateWakeLock();
         });
 
-        // AUDIO CONFIG
         const audioFiles = {
             leader:   new Audio('leader.mp3'),
             bumper:   new Audio('bumper.mp3'),
@@ -531,10 +512,7 @@
             stopklok: new Audio('stopklok.mp3'),
             finale:   new Audio('finale.mp3')
         };
-        Object.values(audioFiles).forEach(audio => {
-            audio.preload = 'auto'; 
-            audio.loop = false;
-        });
+        Object.values(audioFiles).forEach(audio => { audio.preload = 'auto'; audio.loop = false; });
         audioFiles.clock.loop = true;  
 
         const sfxPaths = { juist: 'juist.mp3', fout: 'fout.mp3' };
@@ -545,8 +523,8 @@
         });
 
         let globalVolume = 1.0;
+        let lastVolume = 1.0; // Onthoud volume voor unmute
 
-        // DOM
         const els = {
             leader: document.getElementById('btn-leader'),
             progLeader: document.getElementById('progress-leader'),
@@ -561,34 +539,64 @@
             fout:   document.getElementById('btn-fout'),
             stop:   document.getElementById('btn-stop'),
             finale: document.getElementById('btn-finale'),
-            
             themeBtn: document.getElementById('btn-theme-toggle'),
-            themeContainer: document.getElementById('theme-icon-container'),
-            volumeSlider: document.getElementById('volume-slider')
+            themeIcon: document.getElementById('theme-icon'),
+            volumeSlider: document.getElementById('volume-slider'),
+            volumeIcon: document.getElementById('volume-icon'),
+            muteBtn: document.getElementById('btn-mute-toggle')
         };
 
-        // VARS
-        let clockInterval = null;
-        let clockStartTime = null;
-        let autoStopDuration = null; 
-        let currentThemeMode = 'auto';
+        // --- VOLUME & MUTE LOGICA ---
 
-        // SETTINGS UI
+        function updateVolumeIcon(vol) {
+            if (vol === 0) els.volumeIcon.innerText = 'volume_off';
+            else if (vol < 0.5) els.volumeIcon.innerText = 'volume_down';
+            else els.volumeIcon.innerText = 'volume_up';
+        }
+
+        function setGlobalVolume(vol, fromRemote = false) {
+            globalVolume = parseFloat(vol);
+            els.volumeSlider.value = globalVolume;
+            Object.values(audioFiles).forEach(audio => { audio.volume = globalVolume; });
+            
+            updateVolumeIcon(globalVolume);
+
+            if (!fromRemote) {
+                sendRemote('volume', globalVolume);
+            }
+        }
+
+        // Slider Input
+        els.volumeSlider.addEventListener('input', (e) => {
+            setGlobalVolume(e.target.value);
+        });
+
+        // Mute Toggle Click
+        els.muteBtn.addEventListener('click', () => {
+            if (globalVolume > 0) {
+                lastVolume = globalVolume;
+                setGlobalVolume(0);
+            } else {
+                setGlobalVolume(lastVolume || 1.0);
+            }
+        });
+
+        // --- SETTINGS UI ---
+        let currentThemeMode = 'auto';
         function updateTheme() {
             const root = document.documentElement;
             root.removeAttribute('data-theme');
             
-            // Logic voor SVG icon swap
             if (currentThemeMode === 'auto') {
-                els.themeContainer.innerHTML = icons.auto;
+                els.themeIcon.innerText = "brightness_auto";
                 if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
                     root.setAttribute('data-theme', 'light');
                 }
             } else if (currentThemeMode === 'light') {
-                els.themeContainer.innerHTML = icons.sun;
+                els.themeIcon.innerText = "light_mode";
                 root.setAttribute('data-theme', 'light');
             } else if (currentThemeMode === 'dark') {
-                els.themeContainer.innerHTML = icons.moon;
+                els.themeIcon.innerText = "dark_mode";
             }
         }
         
@@ -601,22 +609,7 @@
         window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', updateTheme);
         updateTheme();
 
-        els.volumeSlider.addEventListener('input', (e) => {
-            globalVolume = parseFloat(e.target.value);
-            Object.values(audioFiles).forEach(audio => { audio.volume = globalVolume; });
-            sendRemote('volume', globalVolume);
-        });
-
-        // CORE AUDIO FUNCTIES
-        function stopAllMainTracks(isRemote = false) {
-            stopSingle(audioFiles.leader, els.leader, els.progLeader);
-            stopClockLogic(isRemote); 
-            stopSingle(audioFiles.bumper, els.bumper);
-            stopSingle(audioFiles.finale, els.finale);
-            stopSingle(audioFiles.stopklok, els.stop);
-            if(!isRemote) sendRemote('stopAll', null);
-        }
-
+        // --- EVENT LISTENERS (PLAYBACK) ---
         function playSingle(audioObj, btnElement, progElement, isRemote = false) {
             activateWakeLock();
             audioObj.volume = globalVolume;
@@ -639,34 +632,28 @@
             if(progElement) progElement.style.width = '0%';
         }
 
+        function stopAllMainTracks(isRemote = false) {
+            stopSingle(audioFiles.leader, els.leader, els.progLeader);
+            stopClockLogic(isRemote); 
+            stopSingle(audioFiles.bumper, els.bumper);
+            stopSingle(audioFiles.finale, els.finale);
+            stopSingle(audioFiles.stopklok, els.stop);
+            if(!isRemote) sendRemote('stopAll', null);
+        }
+
         function playSFX(path, isRemote = false) {
             activateWakeLock();
             const sfx = new Audio(path);
             sfx.preload = 'auto'; 
             sfx.volume = globalVolume; 
             sfx.play();
-            
             if(!isRemote && isHost) {
                 let key = Object.keys(sfxPaths).find(k => sfxPaths[k] === path);
                 if(key) sendRemote('sfx', key);
             }
         }
 
-        function attachProgressHandler(audioObj, progElement) {
-            if(!progElement) return;
-            audioObj.addEventListener('timeupdate', () => {
-                if (audioObj.duration) {
-                    const pct = (audioObj.currentTime / audioObj.duration) * 100;
-                    progElement.style.width = pct + '%';
-                }
-            });
-            audioObj.addEventListener('ended', () => {
-                progElement.style.width = '0%';
-            });
-        }
-        attachProgressHandler(audioFiles.leader, els.progLeader);
-
-        // EVENT LISTENERS
+        // DOM Triggers
         els.leader.addEventListener('click', () => {
             if (!audioFiles.leader.paused) {
                 stopSingle(audioFiles.leader, els.leader, els.progLeader);
@@ -677,30 +664,45 @@
             }
         });
         
-        audioFiles.leader.addEventListener('ended', () => {
-            els.leader.classList.remove('playing');
-            if(isHost || !conn) playSingle(audioFiles.bumper, els.bumper);
-        });
+        // Progress bar logic
+        if(els.progLeader) {
+            audioFiles.leader.addEventListener('timeupdate', () => {
+                if(audioFiles.leader.duration) els.progLeader.style.width = (audioFiles.leader.currentTime/audioFiles.leader.duration)*100 + '%';
+            });
+            audioFiles.leader.addEventListener('ended', () => {
+                els.progLeader.style.width = '0%';
+                els.leader.classList.remove('playing');
+                if(isHost || !conn) playSingle(audioFiles.bumper, els.bumper);
+            });
+        }
 
-        els.bumper.addEventListener('click', () => {
-            stopAllMainTracks(); 
-            playSingle(audioFiles.bumper, els.bumper);
-        });
+        els.bumper.addEventListener('click', () => { stopAllMainTracks(); playSingle(audioFiles.bumper, els.bumper); });
         audioFiles.bumper.addEventListener('ended', () => els.bumper.classList.remove('playing'));
 
+        els.finale.addEventListener('click', () => { stopAllMainTracks(); playSingle(audioFiles.finale, els.finale); });
+        audioFiles.finale.addEventListener('ended', () => els.finale.classList.remove('playing'));
+
+        // Clock Triggers
         els.clockTarget.addEventListener('click', () => {
             if (!audioFiles.clock.paused) stopClockLogic();
             else startClockLogic();
         });
+        
+        els.juist.addEventListener('click', (e) => { e.stopPropagation(); playSFX(sfxPaths.juist); });
+        els.fout.addEventListener('click', (e) => { e.stopPropagation(); playSFX(sfxPaths.fout); });
+        els.stop.addEventListener('click', (e) => { 
+            e.stopPropagation(); stopClockLogic(); 
+            audioFiles.stopklok.volume = globalVolume;
+            playSingle(audioFiles.stopklok, els.stop);
+        });
+        audioFiles.stopklok.addEventListener('ended', () => els.stop.classList.remove('playing'));
 
         els.autoStopBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
-                e.stopPropagation(); 
-                activateWakeLock();
+                e.stopPropagation(); activateWakeLock();
                 const time = parseInt(btn.dataset.time);
                 if (autoStopDuration === time) {
-                    autoStopDuration = null;
-                    btn.classList.remove('active');
+                    autoStopDuration = null; btn.classList.remove('active');
                     sendRemote('autoStopClear', null);
                 } else {
                     autoStopDuration = time;
@@ -711,62 +713,28 @@
             });
         });
 
-        els.juist.addEventListener('click', (e) => {
-            e.stopPropagation(); 
-            playSFX(sfxPaths.juist);
-        });
-        
-        els.fout.addEventListener('click', (e) => {
-            e.stopPropagation(); 
-            playSFX(sfxPaths.fout);
-        });
-        
-        els.stop.addEventListener('click', (e) => {
-            e.stopPropagation(); 
-            stopClockLogic();
-            audioFiles.stopklok.volume = globalVolume;
-            playSingle(audioFiles.stopklok, els.stop);
-        });
-        audioFiles.stopklok.addEventListener('ended', () => els.stop.classList.remove('playing'));
+        // Vars
+        let clockInterval = null;
+        let clockStartTime = null;
+        let autoStopDuration = null; 
 
-        els.finale.addEventListener('click', () => {
-            stopAllMainTracks();
-            playSingle(audioFiles.finale, els.finale);
-        });
-        audioFiles.finale.addEventListener('ended', () => els.finale.classList.remove('playing'));
-
-        // KLOK LOGICA
         function startClockLogic(isRemote = false) {
-            if(!isRemote) stopAllMainTracks(); 
-            else stopAllMainTracks(true);
-
+            if(!isRemote) stopAllMainTracks(); else stopAllMainTracks(true);
             playSingle(audioFiles.clock, els.clockPanel, null, isRemote);
-            
             els.clockTimer.style.display = 'block';
             els.autoStopWrapper.style.display = 'flex';
             els.clockActions.style.display = 'grid'; 
-            
             clockStartTime = Date.now();
             els.clockTimer.innerText = "00:00";
-            
             if (clockInterval) clearInterval(clockInterval);
-            
             clockInterval = setInterval(() => {
                 const now = Date.now();
                 const elapsedSeconds = (now - clockStartTime) / 1000;
-                
                 const minutes = Math.floor(elapsedSeconds / 60);
                 const seconds = Math.floor(elapsedSeconds % 60);
-                const text = 
-                    (minutes < 10 ? "0" + minutes : minutes) + ":" + 
-                    (seconds < 10 ? "0" + seconds : seconds);
-                els.clockTimer.innerText = text;
-
-                if (autoStopDuration !== null && elapsedSeconds >= autoStopDuration) {
-                    performAutoStop();
-                }
+                els.clockTimer.innerText = (minutes < 10 ? "0" + minutes : minutes) + ":" + (seconds < 10 ? "0" + seconds : seconds);
+                if (autoStopDuration !== null && elapsedSeconds >= autoStopDuration) performAutoStop();
             }, 100);
-
             if(!isRemote) sendRemote('clockStart', null);
         }
 
@@ -784,12 +752,10 @@
         function performAutoStop() {
             stopClockLogic(true); 
             audioFiles.stopklok.volume = globalVolume;
-            const sfx = audioFiles.stopklok;
-            sfx.currentTime = 0; sfx.play();
+            const sfx = audioFiles.stopklok; sfx.currentTime = 0; sfx.play();
             els.stop.classList.add('playing');
             setTimeout(() => els.stop.classList.remove('playing'), 500);
         }
-
     </script>
 </body>
 </html>
