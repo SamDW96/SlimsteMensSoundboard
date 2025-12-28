@@ -72,7 +72,8 @@
             height: 100%;
             max-height: 100dvh;
             max-width: 500px;
-            padding: 10px 2px; 
+            /* FIX: Padding vergroot naar 20px zodat glow niet afkapt */
+            padding: 10px 20px; 
             overflow-y: auto; 
             position: relative;
         }
@@ -391,10 +392,9 @@
             document.getElementById('remote-menu').classList.add('hidden');
             document.getElementById('host-screen').classList.remove('hidden');
             
-            // Genereer 4-letter code
             const code = Math.random().toString(36).substring(2, 6).toUpperCase();
             document.getElementById('host-code-display').innerText = code;
-            myPeerId = "sm-" + code; // Prefix om uniekheid te vergroten
+            myPeerId = "sm-" + code; 
 
             peer = new Peer(myPeerId);
 
@@ -408,9 +408,8 @@
                 conn = connection;
                 document.getElementById('host-status').innerText = "✅ Verbonden met ontvanger!";
                 document.getElementById('host-status').style.color = "#2ecc71";
-                closeModal(); // Sluit modal automatisch bij verbinding
+                closeModal(); 
                 
-                // Stuur direct volume status
                 setTimeout(() => {
                     sendRemote('volume', globalVolume);
                 }, 500);
@@ -430,7 +429,7 @@
             if(inputCode.length < 4) return alert("Code te kort");
             
             const hostId = "sm-" + inputCode;
-            peer = new Peer(); // Random Client ID
+            peer = new Peer(); 
 
             peer.on('open', () => {
                 conn = peer.connect(hostId);
@@ -438,7 +437,6 @@
                 conn.on('open', () => {
                     console.log("Connected to Host");
                     closeModal();
-                    // Toon startscherm om audio te enablen
                     document.getElementById('client-start-screen').classList.remove('hidden');
                 });
 
@@ -451,60 +449,44 @@
         }
 
         function activateClientAudio() {
-            // Speel stil geluidje om audio context te wekken
-            const silent = new Audio(); // Leeg object
-            // Verberg scherm
+            const silent = new Audio(); 
             document.getElementById('client-start-screen').classList.add('hidden');
             remoteIcon.classList.add('remote-active');
             activateWakeLock();
         }
 
-        // SEND COMMAND (Alleen als Host)
         function sendRemote(action, payload) {
             if(isHost && conn) {
                 conn.send({ action: action, payload: payload });
             }
         }
 
-        // RECEIVE COMMAND (Alleen als Client)
         function handleRemoteCommand(data) {
             console.log("Remote Cmd:", data);
             
-            // 1. Play Commands
             if(data.action === 'playSingle') {
-                // Vind audio object en element
                 const audioObj = audioFiles[data.payload.key];
                 const btnEl = els[data.payload.key];
                 const progEl = data.payload.key === 'leader' ? els.progLeader : null;
                 
-                // Stop alles lokaal (client side)
-                stopAllMainTracks(true); // true = skip sending remote command back
+                stopAllMainTracks(true); 
                 playSingle(audioObj, btnEl, progEl, true);
             }
-            
-            // 2. Stop All
             else if(data.action === 'stopAll') {
                 stopAllMainTracks(true);
             }
-            
-            // 3. Clock Start/Stop
             else if(data.action === 'clockStart') {
                 startClockLogic(true);
             }
             else if(data.action === 'clockStop') {
                 stopClockLogic(true);
             }
-            
-            // 4. SFX
             else if(data.action === 'sfx') {
                 playSFX(sfxPaths[data.payload], true);
             }
-
-            // 5. Auto Stop Toggle
             else if(data.action === 'autoStopSet') {
                 const time = data.payload;
                 autoStopDuration = time;
-                // Update UI
                 els.autoStopBtns.forEach(b => {
                     if(parseInt(b.dataset.time) === time) b.classList.add('active');
                     else b.classList.remove('active');
@@ -514,8 +496,6 @@
                 autoStopDuration = null;
                 els.autoStopBtns.forEach(b => b.classList.remove('active'));
             }
-
-            // 6. Volume Sync (Optioneel)
             else if(data.action === 'volume') {
                 globalVolume = data.payload;
                 els.volumeSlider.value = globalVolume;
@@ -524,9 +504,8 @@
         }
 
 
-        // --- 2. EXISTING LOGIC (Aangepast voor Remote) ---
+        // --- 2. EXISTING LOGIC ---
         
-        // WAKE LOCK
         let wakeLock = null;
         async function activateWakeLock() {
             if ('wakeLock' in navigator) {
@@ -541,7 +520,7 @@
             if (wakeLock === null && document.visibilityState === 'visible') activateWakeLock();
         });
 
-        // AUDIO
+        // --- AUDIO CONFIG & PRELOAD FIX ---
         const audioFiles = {
             leader:   new Audio('leader.mp3'),
             bumper:   new Audio('bumper.mp3'),
@@ -550,13 +529,22 @@
             finale:   new Audio('finale.mp3')
         };
         
-        audioFiles.leader.loop   = false; 
-        audioFiles.bumper.loop   = false;
-        audioFiles.clock.loop    = true;  
-        audioFiles.stopklok.loop = false;
-        audioFiles.finale.loop   = false;
+        // FIX 2: Preload instellen
+        Object.values(audioFiles).forEach(audio => {
+            audio.preload = 'auto'; // Forceer download
+            audio.loop = false;
+        });
+        audioFiles.clock.loop = true;  
 
         const sfxPaths = { juist: 'juist.mp3', fout: 'fout.mp3' };
+        
+        // SFX Preloaden in een cache zodat ze direct beschikbaar zijn
+        const sfxCache = {};
+        Object.keys(sfxPaths).forEach(key => {
+            sfxCache[key] = new Audio(sfxPaths[key]);
+            sfxCache[key].preload = 'auto';
+        });
+
         let globalVolume = 1.0;
 
         // DOM
@@ -615,14 +603,13 @@
         els.volumeSlider.addEventListener('input', (e) => {
             globalVolume = parseFloat(e.target.value);
             Object.values(audioFiles).forEach(audio => { audio.volume = globalVolume; });
-            // Sync volume naar client
             sendRemote('volume', globalVolume);
         });
 
         // CORE AUDIO FUNCTIES
         function stopAllMainTracks(isRemote = false) {
             stopSingle(audioFiles.leader, els.leader, els.progLeader);
-            stopClockLogic(isRemote); // Pass remote flag
+            stopClockLogic(isRemote); 
             stopSingle(audioFiles.bumper, els.bumper);
             stopSingle(audioFiles.finale, els.finale);
             stopSingle(audioFiles.stopklok, els.stop);
@@ -639,7 +626,6 @@
             if(btnElement) btnElement.classList.add('playing');
             if(progElement) progElement.style.width = '0%';
 
-            // Zoek key naam voor remote
             if(!isRemote && isHost) {
                 let key = Object.keys(audioFiles).find(k => audioFiles[k] === audioObj);
                 if(key) sendRemote('playSingle', { key: key });
@@ -655,12 +641,13 @@
 
         function playSFX(path, isRemote = false) {
             activateWakeLock();
+            // Maak nieuwe instantie voor overlapping, maar browser heeft data al in cache
             const sfx = new Audio(path);
+            sfx.preload = 'auto'; 
             sfx.volume = globalVolume; 
             sfx.play();
             
             if(!isRemote && isHost) {
-                // Reverse lookup path
                 let key = Object.keys(sfxPaths).find(k => sfxPaths[k] === path);
                 if(key) sendRemote('sfx', key);
             }
@@ -684,7 +671,7 @@
         els.leader.addEventListener('click', () => {
             if (!audioFiles.leader.paused) {
                 stopSingle(audioFiles.leader, els.leader, els.progLeader);
-                sendRemote('stopAll', null); // Simpele stop
+                sendRemote('stopAll', null); 
             } else {
                 stopAllMainTracks();
                 playSingle(audioFiles.leader, els.leader, els.progLeader);
@@ -693,10 +680,6 @@
         
         audioFiles.leader.addEventListener('ended', () => {
             els.leader.classList.remove('playing');
-            // Auto chain moet lokaal gebeuren bij zowel host als client? 
-            // Nee, beter als Host commando stuurt.
-            // In playSingle(remote=true) hebben we geen logic voor chain.
-            // Simpelste: Als Host ended, stuur play command bumper.
             if(isHost || !conn) {
                  playSingle(audioFiles.bumper, els.bumper);
             }
@@ -759,10 +742,7 @@
         // KLOK LOGICA
         function startClockLogic(isRemote = false) {
             if(!isRemote) stopAllMainTracks(); 
-            else {
-                 // Als client start, moet hij ook zorgen dat andere tracks uit zijn
-                 stopAllMainTracks(true);
-            }
+            else stopAllMainTracks(true);
 
             playSingle(audioFiles.clock, els.clockPanel, null, isRemote);
             
@@ -807,16 +787,10 @@
         }
 
         function performAutoStop() {
-            // Dit gebeurt lokaal op zowel Host als Client onafhankelijk (timer loopt gelijk)
-            // Maar om safe te zijn: laat Host de trigger geven?
-            // Nee, timer drift is minimaal. Laat ze beide lokaal stoppen.
-            stopClockLogic(true); // true = stuur geen stop signaal, we zijn al gesynced
-            
+            stopClockLogic(true); 
             audioFiles.stopklok.volume = globalVolume;
-            // Forceer lokaal afspelen stopklok
             const sfx = audioFiles.stopklok;
             sfx.currentTime = 0; sfx.play();
-            
             els.stop.classList.add('playing');
             setTimeout(() => els.stop.classList.remove('playing'), 500);
         }
