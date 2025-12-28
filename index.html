@@ -74,7 +74,8 @@
             height: 100%;
             max-height: 100dvh;
             max-width: 500px;
-            padding: 10px 20px; 
+            /* FIX: Padding verkleind naar 10px zoals gevraagd */
+            padding: 10px 10px; 
             overflow-y: auto; 
             position: relative;
         }
@@ -108,10 +109,8 @@
         }
         .icon-btn:hover { background: rgba(255,255,255,0.1); }
         
-        /* De Google Material Symbols Class */
         .material-symbols-rounded {
             font-size: 24px;
-            /* Zorgt dat iconen niet geselecteerd kunnen worden als tekst */
             user-select: none; 
         }
 
@@ -126,7 +125,6 @@
             margin-left: 10px;
         }
         
-        /* Mute knop specifiek */
         #btn-mute-toggle {
             cursor: pointer;
             display: flex; align-items: center;
@@ -175,13 +173,17 @@
             box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         }
         .modal-content h2 { margin-top: 0; }
+        
         .modal-btn {
             width: 100%; padding: 12px; margin: 8px 0;
             border: none; border-radius: 8px;
             font-weight: bold; cursor: pointer; font-size: 1rem;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
         }
         .btn-host { background: #3498db; color: white; }
         .btn-join { background: #27ae60; color: white; }
+        .btn-disconnect { background: #e74c3c; color: white; }
+        .btn-back { background: #555; color: white; margin-top: 5px; }
         .btn-cancel { background: transparent; color: #aaa; margin-top: 5px;}
         
         .code-display {
@@ -304,20 +306,31 @@
     <div id="remote-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <h2>Remote Connect</h2>
+            
             <div id="remote-menu">
                 <button class="modal-btn btn-host" onclick="setupHost()">Host (Controle)</button>
                 <button class="modal-btn btn-join" onclick="setupJoin()">Join (Ontvanger)</button>
             </div>
+
+            <div id="connected-menu" class="hidden">
+                <p style="color: #2ecc71; font-weight: bold;">Status: Verbonden ✅</p>
+                <button class="modal-btn btn-disconnect" onclick="disconnectRemote()">Verbinding Verbreken</button>
+            </div>
+
             <div id="host-screen" class="hidden">
                 <p>Deel deze code:</p>
                 <div class="code-display" id="host-code-display">...</div>
                 <p id="host-status" style="font-size: 0.8rem; color: #aaa;">Wachten op verbinding...</p>
+                <button class="modal-btn btn-back" onclick="showRemoteMenu()">Terug</button>
             </div>
+
             <div id="join-screen" class="hidden">
                 <p>Voer Host code in:</p>
                 <input type="text" id="join-code-input" class="code-input" placeholder="CODE" maxlength="4">
                 <button class="modal-btn btn-join" onclick="connectToHost()">Verbinden</button>
+                <button class="modal-btn btn-back" onclick="showRemoteMenu()">Terug</button>
             </div>
+
             <button class="modal-btn btn-cancel" onclick="closeModal()">Annuleren</button>
         </div>
     </div>
@@ -399,8 +412,82 @@
         const modal = document.getElementById('remote-modal');
         const remoteIcon = document.getElementById('remote-icon');
 
-        function openModal() { modal.classList.remove('hidden'); }
-        function closeModal() { modal.classList.add('hidden'); }
+        function openModal() { 
+            modal.classList.remove('hidden'); 
+            
+            // Check status en toon juiste scherm
+            const menu = document.getElementById('remote-menu');
+            const connectedMenu = document.getElementById('connected-menu');
+            
+            // Verberg alle subschermen voor de zekerheid
+            document.getElementById('host-screen').classList.add('hidden');
+            document.getElementById('join-screen').classList.add('hidden');
+
+            if (peer && !peer.destroyed && conn && conn.open) {
+                // We zijn verbonden
+                menu.classList.add('hidden');
+                connectedMenu.classList.remove('hidden');
+            } else {
+                // We zijn niet verbonden
+                menu.classList.remove('hidden');
+                connectedMenu.classList.add('hidden');
+            }
+        }
+
+        function closeModal() { 
+            // Als we sluiten, en er is nog geen actieve connectie, destroy dan de peer (clean up)
+            // Dit lost het "groene icoon" probleem op bij annuleren
+            if (peer && !peer.destroyed && (!conn || !conn.open) && !isHost) {
+                 disconnectRemote();
+            }
+            // Als we host zijn maar niemand is verbonden, laten we hem aanstaan (wachten op connectie)
+            // Tenzij de gebruiker expliciet op annuleren klikte?
+            // De vraag was: "green if you open... and then cancel".
+            // Dus bij cancel moeten we alles resetten.
+            
+            modal.classList.add('hidden'); 
+        }
+        
+        // Specifieke Cancel knop actie (alles resetten als niet verbonden)
+        function handleCancel() {
+             if (peer && (!conn || !conn.open)) {
+                 disconnectRemote();
+             }
+             closeModal();
+        }
+        // Update de onclick in HTML hierboven naar handleCancel() ipv closeModal() direct?
+        // Nee, ik pas de closeModal() logica iets aan:
+        // Als Modal sluit, checken we status.
+        
+        // NAVIGATIE IN MODAL
+        function showRemoteMenu() {
+            // Als we teruggaan vanuit Host scherm, moeten we de Peer destroyen om te stoppen met hosten
+            if (isHost && (!conn || !conn.open)) {
+                if(peer) peer.destroy();
+                isHost = false;
+                remoteIcon.classList.remove('remote-active');
+            }
+
+            document.getElementById('host-screen').classList.add('hidden');
+            document.getElementById('join-screen').classList.add('hidden');
+            document.getElementById('connected-menu').classList.add('hidden');
+            document.getElementById('remote-menu').classList.remove('hidden');
+        }
+
+        function disconnectRemote() {
+            if (conn) conn.close();
+            if (peer) peer.destroy();
+            peer = null;
+            conn = null;
+            isHost = false;
+            
+            remoteIcon.innerText = "cast";
+            remoteIcon.classList.remove('remote-active');
+            
+            // Reset modal state
+            showRemoteMenu();
+            closeModal();
+        }
 
         function setupHost() {
             document.getElementById('remote-menu').classList.add('hidden');
@@ -408,12 +495,15 @@
             
             const code = Math.random().toString(36).substring(2, 6).toUpperCase();
             document.getElementById('host-code-display').innerText = code;
+            document.getElementById('host-status').innerText = "Wachten op verbinding...";
+            document.getElementById('host-status').style.color = "#aaa";
             
+            if (peer) peer.destroy(); // Zeker zijn dat we vers starten
             peer = new Peer("sm-" + code);
 
             peer.on('open', (id) => {
                 isHost = true;
-                remoteIcon.innerText = "cast_connected"; // Changed icon
+                remoteIcon.innerText = "cast_connected"; 
                 remoteIcon.classList.add('remote-active');
             });
 
@@ -425,6 +515,7 @@
                 setTimeout(() => sendRemote('volume', globalVolume), 500);
             });
             peer.on('error', (err) => alert("Connectie fout: " + err));
+            peer.on('disconnected', () => disconnectRemote()); // Handle peer disconnect
         }
 
         function setupJoin() {
@@ -436,6 +527,7 @@
             const inputCode = document.getElementById('join-code-input').value.trim().toUpperCase();
             if(inputCode.length < 4) return alert("Code te kort");
             
+            if (peer) peer.destroy();
             peer = new Peer(); 
 
             peer.on('open', () => {
@@ -445,6 +537,10 @@
                     document.getElementById('client-start-screen').classList.remove('hidden');
                 });
                 conn.on('data', (data) => handleRemoteCommand(data));
+                conn.on('close', () => {
+                    alert("Verbinding verbroken door host.");
+                    disconnectRemote();
+                });
             });
             peer.on('error', (err) => alert("Kan niet verbinden."));
         }
@@ -485,7 +581,7 @@
                 els.autoStopBtns.forEach(b => b.classList.remove('active'));
             }
             else if(data.action === 'volume') {
-                setGlobalVolume(data.payload, true); // true = from remote
+                setGlobalVolume(data.payload, true); 
             }
         }
 
@@ -523,7 +619,7 @@
         });
 
         let globalVolume = 1.0;
-        let lastVolume = 1.0; // Onthoud volume voor unmute
+        let lastVolume = 1.0; 
 
         const els = {
             leader: document.getElementById('btn-leader'),
@@ -566,12 +662,10 @@
             }
         }
 
-        // Slider Input
         els.volumeSlider.addEventListener('input', (e) => {
             setGlobalVolume(e.target.value);
         });
 
-        // Mute Toggle Click
         els.muteBtn.addEventListener('click', () => {
             if (globalVolume > 0) {
                 lastVolume = globalVolume;
@@ -653,7 +747,6 @@
             }
         }
 
-        // DOM Triggers
         els.leader.addEventListener('click', () => {
             if (!audioFiles.leader.paused) {
                 stopSingle(audioFiles.leader, els.leader, els.progLeader);
@@ -664,7 +757,6 @@
             }
         });
         
-        // Progress bar logic
         if(els.progLeader) {
             audioFiles.leader.addEventListener('timeupdate', () => {
                 if(audioFiles.leader.duration) els.progLeader.style.width = (audioFiles.leader.currentTime/audioFiles.leader.duration)*100 + '%';
@@ -682,7 +774,6 @@
         els.finale.addEventListener('click', () => { stopAllMainTracks(); playSingle(audioFiles.finale, els.finale); });
         audioFiles.finale.addEventListener('ended', () => els.finale.classList.remove('playing'));
 
-        // Clock Triggers
         els.clockTarget.addEventListener('click', () => {
             if (!audioFiles.clock.paused) stopClockLogic();
             else startClockLogic();
