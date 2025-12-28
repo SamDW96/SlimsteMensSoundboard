@@ -72,13 +72,12 @@
             height: 100%;
             max-height: 100dvh;
             max-width: 500px;
-            /* FIX: Padding vergroot naar 20px zodat glow niet afkapt */
             padding: 10px 20px; 
             overflow-y: auto; 
             position: relative;
         }
 
-        /* --- 2. SETTINGS BALK --- */
+        /* --- 2. SETTINGS BALK & SVG ICONEN --- */
         .settings-bar {
             display: flex;
             align-items: center;
@@ -91,21 +90,30 @@
             font-size: 0.9rem;
         }
 
-        .settings-left { display: flex; gap: 15px; align-items: center; }
+        .settings-left { display: flex; gap: 10px; align-items: center; }
 
         .icon-btn {
             background: none;
             border: none;
             color: var(--text-color);
-            font-size: 1.2rem;
             cursor: pointer;
-            padding: 5px;
+            padding: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
+            border-radius: 50%;
+            transition: background 0.2s;
         }
+        .icon-btn:hover { background: rgba(255,255,255,0.1); }
         
-        .remote-active { color: #2ecc71; text-shadow: 0 0 10px #2ecc71; }
+        /* De magie voor universele iconen */
+        .icon-svg {
+            width: 24px;
+            height: 24px;
+            fill: currentColor; /* Neemt automatisch de tekstkleur aan */
+        }
+
+        .remote-active { color: #2ecc71; filter: drop-shadow(0 0 5px rgba(46,204,113,0.5)); }
 
         .volume-control {
             display: flex;
@@ -119,7 +127,7 @@
         input[type=range] {
             -webkit-appearance: none;
             width: 100px;
-            height: 6px;
+            height: 4px;
             background: rgba(128, 128, 128, 0.5);
             border-radius: 5px;
             outline: none;
@@ -127,8 +135,8 @@
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            width: 18px;
-            height: 18px;
+            width: 16px;
+            height: 16px;
             border-radius: 50%;
             background: var(--text-color);
             cursor: pointer;
@@ -178,7 +186,7 @@
             margin-bottom: 10px;
         }
 
-        /* Het "Start Scherm" voor Clients (Autoplay policy fix) */
+        /* Het "Start Scherm" voor Clients */
         #client-start-screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: var(--bg-color); z-index: 500;
@@ -285,25 +293,21 @@
 
     <div id="remote-modal" class="modal-overlay hidden">
         <div class="modal-content">
-            <h2>Remote Connect 📶</h2>
-            
+            <h2>Remote Connect</h2>
             <div id="remote-menu">
                 <button class="modal-btn btn-host" onclick="setupHost()">Host (Controle)</button>
                 <button class="modal-btn btn-join" onclick="setupJoin()">Join (Ontvanger)</button>
             </div>
-
             <div id="host-screen" class="hidden">
-                <p>Deel deze code met de ontvanger:</p>
+                <p>Deel deze code:</p>
                 <div class="code-display" id="host-code-display">...</div>
                 <p id="host-status" style="font-size: 0.8rem; color: #aaa;">Wachten op verbinding...</p>
             </div>
-
             <div id="join-screen" class="hidden">
-                <p>Voer de code van de Host in:</p>
+                <p>Voer Host code in:</p>
                 <input type="text" id="join-code-input" class="code-input" placeholder="CODE" maxlength="4">
                 <button class="modal-btn btn-join" onclick="connectToHost()">Verbinden</button>
             </div>
-
             <button class="modal-btn btn-cancel" onclick="closeModal()">Annuleren</button>
         </div>
     </div>
@@ -320,15 +324,29 @@
         <div class="settings-bar">
             <div class="settings-left">
                 <button class="icon-btn" id="btn-theme-toggle" title="Wissel thema">
-                    <span id="theme-icon">🌓</span> 
+                    <span id="theme-icon-container">
+                        </span> 
                 </button>
                 <button class="icon-btn" id="btn-remote-toggle" title="Remote Play" onclick="openModal()">
-                    <span id="remote-icon">📶</span>
+                    <svg class="icon-svg" id="remote-icon" viewBox="0 0 24 24">
+                        <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+                        <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+                        <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+                        <line x1="12" y1="20" x2="12.01" y2="20"></line>
+                        <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M12 20h.01"/>
+                        <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M5 12.55a11 11 0 0 1 14.08 0"/>
+                        <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M1.42 9a16 16 0 0 1 21.16 0"/>
+                        <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+                    </svg>
                 </button>
             </div>
 
             <div class="volume-control">
-                <span>🔊</span>
+                <svg class="icon-svg" viewBox="0 0 24 24">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"></polygon>
+                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"></path>
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"></path>
+                </svg>
                 <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="1">
             </div>
         </div>
@@ -375,6 +393,13 @@
     </div>
 
     <script>
+        // --- ICONS DEFINITIES (SVG) ---
+        const icons = {
+            sun: `<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`,
+            moon: `<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`,
+            auto: `<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"></path></svg>`
+        };
+
         // --- 1. REMOTE LOGIC (PEERJS) ---
         let peer = null;
         let conn = null;
@@ -406,15 +431,11 @@
 
             peer.on('connection', (connection) => {
                 conn = connection;
-                document.getElementById('host-status').innerText = "✅ Verbonden met ontvanger!";
+                document.getElementById('host-status').innerText = "✅ Verbonden!";
                 document.getElementById('host-status').style.color = "#2ecc71";
                 closeModal(); 
-                
-                setTimeout(() => {
-                    sendRemote('volume', globalVolume);
-                }, 500);
+                setTimeout(() => sendRemote('volume', globalVolume), 500);
             });
-            
             peer.on('error', (err) => alert("Connectie fout: " + err));
         }
 
@@ -433,23 +454,16 @@
 
             peer.on('open', () => {
                 conn = peer.connect(hostId);
-                
                 conn.on('open', () => {
-                    console.log("Connected to Host");
                     closeModal();
                     document.getElementById('client-start-screen').classList.remove('hidden');
                 });
-
-                conn.on('data', (data) => {
-                    handleRemoteCommand(data);
-                });
+                conn.on('data', (data) => handleRemoteCommand(data));
             });
-
-            peer.on('error', (err) => alert("Kan niet verbinden. Check code. " + err));
+            peer.on('error', (err) => alert("Kan niet verbinden. Check code."));
         }
 
         function activateClientAudio() {
-            const silent = new Audio(); 
             document.getElementById('client-start-screen').classList.add('hidden');
             remoteIcon.classList.add('remote-active');
             activateWakeLock();
@@ -462,28 +476,17 @@
         }
 
         function handleRemoteCommand(data) {
-            console.log("Remote Cmd:", data);
-            
             if(data.action === 'playSingle') {
                 const audioObj = audioFiles[data.payload.key];
                 const btnEl = els[data.payload.key];
                 const progEl = data.payload.key === 'leader' ? els.progLeader : null;
-                
                 stopAllMainTracks(true); 
                 playSingle(audioObj, btnEl, progEl, true);
             }
-            else if(data.action === 'stopAll') {
-                stopAllMainTracks(true);
-            }
-            else if(data.action === 'clockStart') {
-                startClockLogic(true);
-            }
-            else if(data.action === 'clockStop') {
-                stopClockLogic(true);
-            }
-            else if(data.action === 'sfx') {
-                playSFX(sfxPaths[data.payload], true);
-            }
+            else if(data.action === 'stopAll') stopAllMainTracks(true);
+            else if(data.action === 'clockStart') startClockLogic(true);
+            else if(data.action === 'clockStop') stopClockLogic(true);
+            else if(data.action === 'sfx') playSFX(sfxPaths[data.payload], true);
             else if(data.action === 'autoStopSet') {
                 const time = data.payload;
                 autoStopDuration = time;
@@ -520,7 +523,7 @@
             if (wakeLock === null && document.visibilityState === 'visible') activateWakeLock();
         });
 
-        // --- AUDIO CONFIG & PRELOAD FIX ---
+        // AUDIO CONFIG
         const audioFiles = {
             leader:   new Audio('leader.mp3'),
             bumper:   new Audio('bumper.mp3'),
@@ -528,17 +531,13 @@
             stopklok: new Audio('stopklok.mp3'),
             finale:   new Audio('finale.mp3')
         };
-        
-        // FIX 2: Preload instellen
         Object.values(audioFiles).forEach(audio => {
-            audio.preload = 'auto'; // Forceer download
+            audio.preload = 'auto'; 
             audio.loop = false;
         });
         audioFiles.clock.loop = true;  
 
         const sfxPaths = { juist: 'juist.mp3', fout: 'fout.mp3' };
-        
-        // SFX Preloaden in een cache zodat ze direct beschikbaar zijn
         const sfxCache = {};
         Object.keys(sfxPaths).forEach(key => {
             sfxCache[key] = new Audio(sfxPaths[key]);
@@ -564,7 +563,7 @@
             finale: document.getElementById('btn-finale'),
             
             themeBtn: document.getElementById('btn-theme-toggle'),
-            themeIcon: document.getElementById('theme-icon'),
+            themeContainer: document.getElementById('theme-icon-container'),
             volumeSlider: document.getElementById('volume-slider')
         };
 
@@ -577,20 +576,22 @@
         // SETTINGS UI
         function updateTheme() {
             const root = document.documentElement;
-            const icon = els.themeIcon;
             root.removeAttribute('data-theme');
+            
+            // Logic voor SVG icon swap
             if (currentThemeMode === 'auto') {
-                icon.innerText = "🌓"; 
+                els.themeContainer.innerHTML = icons.auto;
                 if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
                     root.setAttribute('data-theme', 'light');
                 }
             } else if (currentThemeMode === 'light') {
-                icon.innerText = "☀️";
+                els.themeContainer.innerHTML = icons.sun;
                 root.setAttribute('data-theme', 'light');
             } else if (currentThemeMode === 'dark') {
-                icon.innerText = "🌙";
+                els.themeContainer.innerHTML = icons.moon;
             }
         }
+        
         els.themeBtn.addEventListener('click', () => {
             if (currentThemeMode === 'auto') currentThemeMode = 'light';
             else if (currentThemeMode === 'light') currentThemeMode = 'dark';
@@ -613,7 +614,6 @@
             stopSingle(audioFiles.bumper, els.bumper);
             stopSingle(audioFiles.finale, els.finale);
             stopSingle(audioFiles.stopklok, els.stop);
-            
             if(!isRemote) sendRemote('stopAll', null);
         }
 
@@ -641,7 +641,6 @@
 
         function playSFX(path, isRemote = false) {
             activateWakeLock();
-            // Maak nieuwe instantie voor overlapping, maar browser heeft data al in cache
             const sfx = new Audio(path);
             sfx.preload = 'auto'; 
             sfx.volume = globalVolume; 
@@ -680,9 +679,7 @@
         
         audioFiles.leader.addEventListener('ended', () => {
             els.leader.classList.remove('playing');
-            if(isHost || !conn) {
-                 playSingle(audioFiles.bumper, els.bumper);
-            }
+            if(isHost || !conn) playSingle(audioFiles.bumper, els.bumper);
         });
 
         els.bumper.addEventListener('click', () => {
@@ -701,7 +698,6 @@
                 e.stopPropagation(); 
                 activateWakeLock();
                 const time = parseInt(btn.dataset.time);
-                
                 if (autoStopDuration === time) {
                     autoStopDuration = null;
                     btn.classList.remove('active');
@@ -782,7 +778,6 @@
             els.autoStopWrapper.style.display = 'none';
             els.clockActions.style.display = 'none';
             els.clockTimer.innerText = "00:00";
-
             if(!isRemote) sendRemote('clockStop', null);
         }
 
