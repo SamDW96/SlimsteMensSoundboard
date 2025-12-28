@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Soundboard</title>
+    
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
     <style>
         /* --- 1. GLOBAL RESET & VARIABELEN --- */
         * {
@@ -65,14 +68,13 @@
             display: flex;
             flex-direction: column;
             gap: 12px;
-            /* BREEDTE FIX: Terug naar bijna volledig scherm */
             width: 96%; 
             height: 100%;
             max-height: 100dvh;
             max-width: 500px;
-            /* Padding verminderd zodat het niet ingesprongen lijkt */
             padding: 10px 2px; 
             overflow-y: auto; 
+            position: relative;
         }
 
         /* --- 2. SETTINGS BALK --- */
@@ -88,7 +90,9 @@
             font-size: 0.9rem;
         }
 
-        .theme-toggle {
+        .settings-left { display: flex; gap: 15px; align-items: center; }
+
+        .icon-btn {
             background: none;
             border: none;
             color: var(--text-color);
@@ -99,6 +103,8 @@
             align-items: center;
             justify-content: center;
         }
+        
+        .remote-active { color: #2ecc71; text-shadow: 0 0 10px #2ecc71; }
 
         .volume-control {
             display: flex;
@@ -128,14 +134,73 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.3);
         }
 
-        /* --- 3. BASIS KNOP STIJLEN --- */
-        .control-row {
-            display: flex;
-            gap: 10px; /* Iets minder gap voor meer knopruimte */
-            width: 100%;
-            flex: 0 0 120px; 
+        /* --- 3. REMOTE MODAL & OVERLAY --- */
+        .modal-overlay {
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 1000;
+            display: flex; align-items: center; justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+        .hidden { display: none !important; }
+
+        .modal-content {
+            background: #2c3e50;
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 350px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        .modal-content h2 { margin-top: 0; }
+        .modal-btn {
+            width: 100%; padding: 12px; margin: 8px 0;
+            border: none; border-radius: 8px;
+            font-weight: bold; cursor: pointer; font-size: 1rem;
+        }
+        .btn-host { background: #3498db; color: white; }
+        .btn-join { background: #27ae60; color: white; }
+        .btn-cancel { background: transparent; color: #aaa; margin-top: 5px;}
+        
+        .code-display {
+            font-size: 2.5rem; letter-spacing: 5px; font-weight: bold;
+            font-family: monospace; margin: 15px 0; color: #f1c40f;
+            user-select: all;
+        }
+        
+        input.code-input {
+            width: 100%; padding: 12px; font-size: 1.5rem; text-align: center;
+            border-radius: 8px; border: 2px solid #555; background: #333; color: white;
+            text-transform: uppercase; letter-spacing: 3px; font-family: monospace;
+            margin-bottom: 10px;
         }
 
+        /* Het "Start Scherm" voor Clients (Autoplay policy fix) */
+        #client-start-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-color); z-index: 500;
+            display: flex; flex-direction: column; 
+            align-items: center; justify-content: center;
+            text-align: center;
+        }
+        .pulse-btn {
+            background: var(--leader-color); padding: 20px 40px;
+            border-radius: 50px; font-size: 1.5rem; font-weight: bold;
+            color: white; border: none; cursor: pointer;
+            box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
+            70% { box-shadow: 0 0 0 20px rgba(46, 204, 113, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
+        }
+
+        /* --- 4. KNOPPEN STIJL --- */
+        .control-row { display: flex; gap: 10px; width: 100%; flex: 0 0 120px; }
+        
         .sound-btn {
             border: 4px solid transparent; 
             border-radius: 12px;
@@ -143,150 +208,71 @@
             cursor: pointer;
             transition: transform 0.1s, border-color 0.2s, box-shadow 0.2s;
             box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-            user-select: none;
-            -webkit-user-select: none;
-            position: relative;
-            overflow: hidden;
+            user-select: none; -webkit-user-select: none;
+            position: relative; overflow: hidden;
             width: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 10px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; padding: 10px;
         }
+        .sound-btn:not(#panel-clock):active { transform: scale(0.98); opacity: 0.9; }
 
-        .sound-btn:not(#panel-clock):active { 
-            transform: scale(0.98); 
-            opacity: 0.9; 
-        }
-
-        .label-large {
-            font-size: 1.4rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            line-height: 1.1;
-        }
-        .label-small {
-            font-size: 0.85rem;
-            font-weight: 400;
-            opacity: 0.9;
-            text-transform: lowercase;
-            margin-top: 2px;
-        }
+        .label-large { font-size: 1.4rem; font-weight: 800; text-transform: uppercase; line-height: 1.1; }
+        .label-small { font-size: 0.85rem; font-weight: 400; opacity: 0.9; text-transform: lowercase; margin-top: 2px; }
 
         #btn-leader { background-color: var(--leader-color); }
         #btn-bumper { background-color: var(--bumper-color); }
         #btn-finale { background-color: var(--finale-color); }
         
-        /* --- 4. HET KLOK PANEEL --- */
+        /* KLOK */
         #panel-clock {
             background-color: var(--clock-color);
-            flex-grow: 1; 
-            min-height: 200px; 
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between; 
+            flex-grow: 1; min-height: 200px; 
+            display: flex; flex-direction: column; justify-content: space-between; 
             padding: 10px;
         }
-        
         .clock-top-section {
-            width: 100%;
-            flex-grow: 1; 
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+            width: 100%; flex-grow: 1; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
             transition: transform 0.1s;
         }
         .clock-top-section:active { transform: scale(0.97); opacity: 0.9; }
-
         #clock-timer {
-            font-size: 3.5rem; 
-            font-weight: 800;
-            font-variant-numeric: tabular-nums;
-            margin-top: 5px;
-            display: none; 
-            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            font-size: 3.5rem; font-weight: 800; font-variant-numeric: tabular-nums;
+            margin-top: 5px; display: none; text-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
-
         .auto-stop-container {
-            display: none; 
-            flex-direction: row;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            background: rgba(0,0,0,0.2);
-            padding: 6px 12px;
-            border-radius: 20px;
-            margin: 10px 0; 
+            display: none; flex-direction: row; align-items: center; justify-content: center;
+            gap: 8px; background: rgba(0,0,0,0.2); padding: 6px 12px;
+            border-radius: 20px; margin: 10px 0; 
         }
-
-        .auto-stop-label {
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            font-weight: bold;
-            opacity: 0.8;
-            margin-right: 4px;
-        }
-
+        .auto-stop-label { font-size: 0.7rem; text-transform: uppercase; font-weight: bold; opacity: 0.8; margin-right: 4px; }
         .auto-stop-btn {
-            background: rgba(255,255,255,0.15);
-            border: 1px solid rgba(255,255,255,0.3);
-            border-radius: 6px;
-            padding: 6px 10px;
-            font-size: 0.8rem;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-            min-width: 40px;
-            text-align: center;
+            background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 6px; padding: 6px 10px; font-size: 0.8rem; color: white; font-weight: bold;
+            cursor: pointer; min-width: 40px; text-align: center;
         }
-        .auto-stop-btn.active {
-            background: white;
-            color: var(--clock-color);
-        }
-
+        .auto-stop-btn.active { background: white; color: var(--clock-color); }
         .clock-actions-wrapper {
-            display: none; 
-            width: 100%;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 10px;
-            margin-top: auto; 
+            display: none; width: 100%; grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px; margin-top: auto; 
         }
-        
         .action-btn {
-            border: none;
-            border-radius: 8px;
-            padding: 15px 5px;
-            font-size: 1rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            color: white;
-            cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            transition: transform 0.1s;
+            border: none; border-radius: 8px; padding: 15px 5px; font-size: 1rem;
+            font-weight: 800; text-transform: uppercase; color: white; cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: transform 0.1s;
         }
         .action-btn:active { transform: scale(0.95); opacity: 0.9; }
-
         #btn-juist { background-color: var(--juist-color); }
         #btn-fout  { background-color: var(--fout-color); }
         #btn-stop  { background-color: var(--stop-color); }
 
-        /* --- 5. PROGRESS BARS & VISUALS --- */
+        /* VISUALS */
         .progress-fill {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            height: 6px;
-            background-color: rgba(255, 255, 255, 0.7);
-            width: 0%;
-            z-index: 1;
-            transition: width 0.1s linear;
+            position: absolute; bottom: 0; left: 0; height: 6px;
+            background-color: rgba(255, 255, 255, 0.7); width: 0%;
+            z-index: 1; transition: width 0.1s linear;
         }
-        
         .content-wrapper { position: relative; z-index: 2; display:flex; flex-direction:column; align-items:center; }
-
         .playing {
             border-color: var(--border-active) !important; 
             box-shadow: 0 0 20px var(--glow-color), inset 0 0 10px rgba(255,255,255,0.3) !important;
@@ -296,12 +282,49 @@
 </head>
 <body>
 
+    <div id="remote-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2>Remote Connect 📶</h2>
+            
+            <div id="remote-menu">
+                <button class="modal-btn btn-host" onclick="setupHost()">Host (Controle)</button>
+                <button class="modal-btn btn-join" onclick="setupJoin()">Join (Ontvanger)</button>
+            </div>
+
+            <div id="host-screen" class="hidden">
+                <p>Deel deze code met de ontvanger:</p>
+                <div class="code-display" id="host-code-display">...</div>
+                <p id="host-status" style="font-size: 0.8rem; color: #aaa;">Wachten op verbinding...</p>
+            </div>
+
+            <div id="join-screen" class="hidden">
+                <p>Voer de code van de Host in:</p>
+                <input type="text" id="join-code-input" class="code-input" placeholder="CODE" maxlength="4">
+                <button class="modal-btn btn-join" onclick="connectToHost()">Verbinden</button>
+            </div>
+
+            <button class="modal-btn btn-cancel" onclick="closeModal()">Annuleren</button>
+        </div>
+    </div>
+
+    <div id="client-start-screen" class="hidden">
+        <h1 style="color:var(--text-color); margin-bottom: 20px;">Klaar voor ontvangst</h1>
+        <button class="pulse-btn" onclick="activateClientAudio()">KLIK OM TE STARTEN</button>
+        <p style="color:var(--text-color); margin-top:20px; opacity:0.7;">Wacht op signaal...</p>
+    </div>
+
+
     <div class="container">
         
         <div class="settings-bar">
-            <button class="theme-toggle" id="btn-theme-toggle" title="Wissel thema">
-                <span id="theme-icon">🌓</span> 
-            </button>
+            <div class="settings-left">
+                <button class="icon-btn" id="btn-theme-toggle" title="Wissel thema">
+                    <span id="theme-icon">🌓</span> 
+                </button>
+                <button class="icon-btn" id="btn-remote-toggle" title="Remote Play" onclick="openModal()">
+                    <span id="remote-icon">📶</span>
+                </button>
+            </div>
 
             <div class="volume-control">
                 <span>🔊</span>
@@ -330,14 +353,12 @@
                 <span class="label-large">Klok</span>
                 <span id="clock-timer">00:00</span>
             </div>
-
             <div class="auto-stop-container" id="auto-stop-wrapper">
                 <span class="auto-stop-label">Auto-stop</span>
                 <div class="auto-stop-btn" data-time="10">10s</div>
                 <div class="auto-stop-btn" data-time="30">30s</div>
                 <div class="auto-stop-btn" data-time="60">1m</div>
             </div>
-
             <div class="clock-actions-wrapper" id="clock-actions">
                 <button id="btn-juist" class="action-btn">Juist</button>
                 <button id="btn-fout" class="action-btn">Fout</button>
@@ -353,7 +374,159 @@
     </div>
 
     <script>
-        // --- WAKE LOCK ---
+        // --- 1. REMOTE LOGIC (PEERJS) ---
+        let peer = null;
+        let conn = null;
+        let isHost = false;
+        let myPeerId = null;
+
+        const modal = document.getElementById('remote-modal');
+        const remoteIcon = document.getElementById('remote-icon');
+
+        function openModal() { modal.classList.remove('hidden'); }
+        function closeModal() { modal.classList.add('hidden'); }
+
+        // HOST SETUP
+        function setupHost() {
+            document.getElementById('remote-menu').classList.add('hidden');
+            document.getElementById('host-screen').classList.remove('hidden');
+            
+            // Genereer 4-letter code
+            const code = Math.random().toString(36).substring(2, 6).toUpperCase();
+            document.getElementById('host-code-display').innerText = code;
+            myPeerId = "sm-" + code; // Prefix om uniekheid te vergroten
+
+            peer = new Peer(myPeerId);
+
+            peer.on('open', (id) => {
+                console.log('Host ID:', id);
+                isHost = true;
+                remoteIcon.classList.add('remote-active');
+            });
+
+            peer.on('connection', (connection) => {
+                conn = connection;
+                document.getElementById('host-status').innerText = "✅ Verbonden met ontvanger!";
+                document.getElementById('host-status').style.color = "#2ecc71";
+                closeModal(); // Sluit modal automatisch bij verbinding
+                
+                // Stuur direct volume status
+                setTimeout(() => {
+                    sendRemote('volume', globalVolume);
+                }, 500);
+            });
+            
+            peer.on('error', (err) => alert("Connectie fout: " + err));
+        }
+
+        // JOIN SETUP
+        function setupJoin() {
+            document.getElementById('remote-menu').classList.add('hidden');
+            document.getElementById('join-screen').classList.remove('hidden');
+        }
+
+        function connectToHost() {
+            const inputCode = document.getElementById('join-code-input').value.trim().toUpperCase();
+            if(inputCode.length < 4) return alert("Code te kort");
+            
+            const hostId = "sm-" + inputCode;
+            peer = new Peer(); // Random Client ID
+
+            peer.on('open', () => {
+                conn = peer.connect(hostId);
+                
+                conn.on('open', () => {
+                    console.log("Connected to Host");
+                    closeModal();
+                    // Toon startscherm om audio te enablen
+                    document.getElementById('client-start-screen').classList.remove('hidden');
+                });
+
+                conn.on('data', (data) => {
+                    handleRemoteCommand(data);
+                });
+            });
+
+            peer.on('error', (err) => alert("Kan niet verbinden. Check code. " + err));
+        }
+
+        function activateClientAudio() {
+            // Speel stil geluidje om audio context te wekken
+            const silent = new Audio(); // Leeg object
+            // Verberg scherm
+            document.getElementById('client-start-screen').classList.add('hidden');
+            remoteIcon.classList.add('remote-active');
+            activateWakeLock();
+        }
+
+        // SEND COMMAND (Alleen als Host)
+        function sendRemote(action, payload) {
+            if(isHost && conn) {
+                conn.send({ action: action, payload: payload });
+            }
+        }
+
+        // RECEIVE COMMAND (Alleen als Client)
+        function handleRemoteCommand(data) {
+            console.log("Remote Cmd:", data);
+            
+            // 1. Play Commands
+            if(data.action === 'playSingle') {
+                // Vind audio object en element
+                const audioObj = audioFiles[data.payload.key];
+                const btnEl = els[data.payload.key];
+                const progEl = data.payload.key === 'leader' ? els.progLeader : null;
+                
+                // Stop alles lokaal (client side)
+                stopAllMainTracks(true); // true = skip sending remote command back
+                playSingle(audioObj, btnEl, progEl, true);
+            }
+            
+            // 2. Stop All
+            else if(data.action === 'stopAll') {
+                stopAllMainTracks(true);
+            }
+            
+            // 3. Clock Start/Stop
+            else if(data.action === 'clockStart') {
+                startClockLogic(true);
+            }
+            else if(data.action === 'clockStop') {
+                stopClockLogic(true);
+            }
+            
+            // 4. SFX
+            else if(data.action === 'sfx') {
+                playSFX(sfxPaths[data.payload], true);
+            }
+
+            // 5. Auto Stop Toggle
+            else if(data.action === 'autoStopSet') {
+                const time = data.payload;
+                autoStopDuration = time;
+                // Update UI
+                els.autoStopBtns.forEach(b => {
+                    if(parseInt(b.dataset.time) === time) b.classList.add('active');
+                    else b.classList.remove('active');
+                });
+            }
+            else if(data.action === 'autoStopClear') {
+                autoStopDuration = null;
+                els.autoStopBtns.forEach(b => b.classList.remove('active'));
+            }
+
+            // 6. Volume Sync (Optioneel)
+            else if(data.action === 'volume') {
+                globalVolume = data.payload;
+                els.volumeSlider.value = globalVolume;
+                Object.values(audioFiles).forEach(a => a.volume = globalVolume);
+            }
+        }
+
+
+        // --- 2. EXISTING LOGIC (Aangepast voor Remote) ---
+        
+        // WAKE LOCK
         let wakeLock = null;
         async function activateWakeLock() {
             if ('wakeLock' in navigator) {
@@ -368,7 +541,7 @@
             if (wakeLock === null && document.visibilityState === 'visible') activateWakeLock();
         });
 
-        // --- AUDIO CONFIG ---
+        // AUDIO
         const audioFiles = {
             leader:   new Audio('leader.mp3'),
             bumper:   new Audio('bumper.mp3'),
@@ -384,17 +557,13 @@
         audioFiles.finale.loop   = false;
 
         const sfxPaths = { juist: 'juist.mp3', fout: 'fout.mp3' };
-        
         let globalVolume = 1.0;
 
-        // --- DOM ELEMENTEN ---
+        // DOM
         const els = {
             leader: document.getElementById('btn-leader'),
             progLeader: document.getElementById('progress-leader'),
-            
             bumper: document.getElementById('btn-bumper'),
-            // Geen progBumper meer
-            
             clockPanel: document.getElementById('panel-clock'),
             clockTarget: document.getElementById('clock-click-target'),
             clockTimer: document.getElementById('clock-timer'),
@@ -404,29 +573,24 @@
             juist:  document.getElementById('btn-juist'),
             fout:   document.getElementById('btn-fout'),
             stop:   document.getElementById('btn-stop'),
-            
             finale: document.getElementById('btn-finale'),
-            // Geen progFinale meer
-
-            // Settings
+            
             themeBtn: document.getElementById('btn-theme-toggle'),
             themeIcon: document.getElementById('theme-icon'),
             volumeSlider: document.getElementById('volume-slider')
         };
 
-        // --- VARIABELEN ---
+        // VARS
         let clockInterval = null;
         let clockStartTime = null;
         let autoStopDuration = null; 
-        
         let currentThemeMode = 'auto';
 
-        // --- SETTINGS LOGICA ---
+        // SETTINGS UI
         function updateTheme() {
             const root = document.documentElement;
             const icon = els.themeIcon;
             root.removeAttribute('data-theme');
-
             if (currentThemeMode === 'auto') {
                 icon.innerText = "🌓"; 
                 if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
@@ -439,35 +603,34 @@
                 icon.innerText = "🌙";
             }
         }
-
         els.themeBtn.addEventListener('click', () => {
             if (currentThemeMode === 'auto') currentThemeMode = 'light';
             else if (currentThemeMode === 'light') currentThemeMode = 'dark';
             else currentThemeMode = 'auto';
             updateTheme();
         });
-
         window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', updateTheme);
         updateTheme();
 
         els.volumeSlider.addEventListener('input', (e) => {
             globalVolume = parseFloat(e.target.value);
-            Object.values(audioFiles).forEach(audio => {
-                audio.volume = globalVolume;
-            });
+            Object.values(audioFiles).forEach(audio => { audio.volume = globalVolume; });
+            // Sync volume naar client
+            sendRemote('volume', globalVolume);
         });
 
-        // --- AUDIO FUNCTIES ---
-
-        function stopAllMainTracks() {
+        // CORE AUDIO FUNCTIES
+        function stopAllMainTracks(isRemote = false) {
             stopSingle(audioFiles.leader, els.leader, els.progLeader);
-            stopClockLogic(); 
+            stopClockLogic(isRemote); // Pass remote flag
             stopSingle(audioFiles.bumper, els.bumper);
             stopSingle(audioFiles.finale, els.finale);
             stopSingle(audioFiles.stopklok, els.stop);
+            
+            if(!isRemote) sendRemote('stopAll', null);
         }
 
-        function playSingle(audioObj, btnElement, progElement) {
+        function playSingle(audioObj, btnElement, progElement, isRemote = false) {
             activateWakeLock();
             audioObj.volume = globalVolume;
             audioObj.currentTime = 0;
@@ -475,6 +638,12 @@
             
             if(btnElement) btnElement.classList.add('playing');
             if(progElement) progElement.style.width = '0%';
+
+            // Zoek key naam voor remote
+            if(!isRemote && isHost) {
+                let key = Object.keys(audioFiles).find(k => audioFiles[k] === audioObj);
+                if(key) sendRemote('playSingle', { key: key });
+            }
         }
 
         function stopSingle(audioObj, btnElement, progElement) {
@@ -484,11 +653,17 @@
             if(progElement) progElement.style.width = '0%';
         }
 
-        function playSFX(path) {
+        function playSFX(path, isRemote = false) {
             activateWakeLock();
             const sfx = new Audio(path);
             sfx.volume = globalVolume; 
-            sfx.play(); 
+            sfx.play();
+            
+            if(!isRemote && isHost) {
+                // Reverse lookup path
+                let key = Object.keys(sfxPaths).find(k => sfxPaths[k] === path);
+                if(key) sendRemote('sfx', key);
+            }
         }
 
         function attachProgressHandler(audioObj, progElement) {
@@ -503,15 +678,13 @@
                 progElement.style.width = '0%';
             });
         }
-
-        // Alleen Leader heeft progress
         attachProgressHandler(audioFiles.leader, els.progLeader);
 
-        // --- EVENT LISTENERS ---
-
+        // EVENT LISTENERS
         els.leader.addEventListener('click', () => {
             if (!audioFiles.leader.paused) {
                 stopSingle(audioFiles.leader, els.leader, els.progLeader);
+                sendRemote('stopAll', null); // Simpele stop
             } else {
                 stopAllMainTracks();
                 playSingle(audioFiles.leader, els.leader, els.progLeader);
@@ -520,7 +693,13 @@
         
         audioFiles.leader.addEventListener('ended', () => {
             els.leader.classList.remove('playing');
-            playSingle(audioFiles.bumper, els.bumper); // Auto-chain
+            // Auto chain moet lokaal gebeuren bij zowel host als client? 
+            // Nee, beter als Host commando stuurt.
+            // In playSingle(remote=true) hebben we geen logic voor chain.
+            // Simpelste: Als Host ended, stuur play command bumper.
+            if(isHost || !conn) {
+                 playSingle(audioFiles.bumper, els.bumper);
+            }
         });
 
         els.bumper.addEventListener('click', () => {
@@ -539,13 +718,16 @@
                 e.stopPropagation(); 
                 activateWakeLock();
                 const time = parseInt(btn.dataset.time);
+                
                 if (autoStopDuration === time) {
                     autoStopDuration = null;
                     btn.classList.remove('active');
+                    sendRemote('autoStopClear', null);
                 } else {
                     autoStopDuration = time;
                     els.autoStopBtns.forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
+                    sendRemote('autoStopSet', time);
                 }
             });
         });
@@ -574,10 +756,15 @@
         });
         audioFiles.finale.addEventListener('ended', () => els.finale.classList.remove('playing'));
 
-        // --- KLOK LOGICA ---
-        function startClockLogic() {
-            stopAllMainTracks(); 
-            playSingle(audioFiles.clock, els.clockPanel);
+        // KLOK LOGICA
+        function startClockLogic(isRemote = false) {
+            if(!isRemote) stopAllMainTracks(); 
+            else {
+                 // Als client start, moet hij ook zorgen dat andere tracks uit zijn
+                 stopAllMainTracks(true);
+            }
+
+            playSingle(audioFiles.clock, els.clockPanel, null, isRemote);
             
             els.clockTimer.style.display = 'block';
             els.autoStopWrapper.style.display = 'flex';
@@ -603,9 +790,11 @@
                     performAutoStop();
                 }
             }, 100);
+
+            if(!isRemote) sendRemote('clockStart', null);
         }
 
-        function stopClockLogic() {
+        function stopClockLogic(isRemote = false) {
             stopSingle(audioFiles.clock, els.clockPanel);
             if (clockInterval) clearInterval(clockInterval);
             clockInterval = null;
@@ -613,12 +802,21 @@
             els.autoStopWrapper.style.display = 'none';
             els.clockActions.style.display = 'none';
             els.clockTimer.innerText = "00:00";
+
+            if(!isRemote) sendRemote('clockStop', null);
         }
 
         function performAutoStop() {
-            stopClockLogic(); 
+            // Dit gebeurt lokaal op zowel Host als Client onafhankelijk (timer loopt gelijk)
+            // Maar om safe te zijn: laat Host de trigger geven?
+            // Nee, timer drift is minimaal. Laat ze beide lokaal stoppen.
+            stopClockLogic(true); // true = stuur geen stop signaal, we zijn al gesynced
+            
             audioFiles.stopklok.volume = globalVolume;
-            playSingle(audioFiles.stopklok, els.stop); 
+            // Forceer lokaal afspelen stopklok
+            const sfx = audioFiles.stopklok;
+            sfx.currentTime = 0; sfx.play();
+            
             els.stop.classList.add('playing');
             setTimeout(() => els.stop.classList.remove('playing'), 500);
         }
