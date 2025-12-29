@@ -440,12 +440,10 @@
             }
         }
 
-        // FIX: closeModal doet nu NIKS meer met de verbinding. Alleen UI.
         function closeModal() { 
             modal.classList.add('hidden'); 
         }
 
-        // FIX: Nieuwe functie specifiek voor de 'Annuleren' knop in het hoofdmenu
         function cancelAndClose() {
             if (peer && (!conn || !conn.open)) {
                  disconnectRemote();
@@ -506,7 +504,7 @@
                 remoteIcon.innerText = "cast_connected"; 
                 remoteIcon.classList.add('remote-active');
                 
-                closeModal(); // Dit verbreekt nu NIET meer de verbinding
+                closeModal(); 
                 setTimeout(() => sendRemote('volume', globalVolume), 500);
             });
             peer.on('error', (err) => alert("Connectie fout: " + err));
@@ -529,7 +527,7 @@
             peer.on('open', () => {
                 conn = peer.connect("sm-" + inputCode);
                 conn.on('open', () => {
-                    closeModal(); // Dit verbreekt nu NIET meer de verbinding
+                    closeModal(); 
                     document.getElementById('client-start-screen').classList.remove('hidden');
                 });
                 conn.on('data', (data) => handleRemoteCommand(data));
@@ -685,14 +683,18 @@
         updateTheme();
 
         // --- EVENT LISTENERS (PLAYBACK) ---
-        function playSingle(audioObj, btnElement, progElement, isRemote = false) {
+        
+        // AANGEPAST: skipBroadcast parameter toegevoegd
+        function playSingle(audioObj, btnElement, progElement, isRemote = false, skipBroadcast = false) {
             activateWakeLock();
             audioObj.volume = globalVolume;
             audioObj.currentTime = 0;
             audioObj.play().catch(e => console.error("Play error:", e));
             if(btnElement) btnElement.classList.add('playing');
             if(progElement) progElement.style.width = '0%';
-            if(!isRemote && isHost) {
+            
+            // Check op skipBroadcast
+            if(!isRemote && isHost && !skipBroadcast) {
                 let key = Object.keys(audioFiles).find(k => audioFiles[k] === audioObj);
                 if(key) sendRemote('playSingle', { key: key });
             }
@@ -743,7 +745,10 @@
             audioFiles.leader.addEventListener('ended', () => {
                 els.progLeader.style.width = '0%';
                 els.leader.classList.remove('playing');
-                if(isHost || !conn) playSingle(audioFiles.bumper, els.bumper);
+                // LOGICA AANGEPAST:
+                // Iedereen (Host + Client) start dit lokaal
+                // Host stuurt GEEN broadcast (laatste parameter = true)
+                playSingle(audioFiles.bumper, els.bumper, null, false, true);
             });
         }
 
