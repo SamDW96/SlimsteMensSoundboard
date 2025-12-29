@@ -44,6 +44,12 @@
             width: 100%; background-color: var(--panel-bg);
             padding: 8px 15px; border-radius: 12px; margin-bottom: 5px;
         }
+        
+        /* FIX: Deze was ik vergeten! Hierdoor staan ze weer naast elkaar */
+        .settings-left {
+            display: flex; gap: 5px; align-items: center;
+        }
+
         .icon-btn {
             background: none; border: none; color: var(--text-color);
             cursor: pointer; padding: 8px; border-radius: 50%; display: flex;
@@ -64,7 +70,7 @@
             border-radius: 50%; background: var(--text-color); cursor: pointer;
         }
 
-        /* --- 3. TOAST NOTIFICATION (NIEUW) --- */
+        /* --- 3. TOAST NOTIFICATION --- */
         #toast-container {
             position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
             z-index: 2000; pointer-events: none; width: 90%; max-width: 400px;
@@ -297,14 +303,13 @@
         const modal = document.getElementById('remote-modal');
         const remoteIcon = document.getElementById('remote-icon');
 
-        // NIEUW: Heartbeat functie om connectie levend te houden
         function startHeartbeat() {
             if(heartbeatInterval) clearInterval(heartbeatInterval);
             heartbeatInterval = setInterval(() => {
                 if(conn && conn.open) {
-                    conn.send({ action: 'ping' }); // Stuurt onzichtbare ping
+                    conn.send({ action: 'ping' });
                 }
-            }, 2000); // Elke 2 seconden
+            }, 2000);
         }
 
         function stopHeartbeat() {
@@ -404,7 +409,7 @@
         }
 
         function handleRemoteCommand(data) {
-            if(data.action === 'ping') return; // Heartbeat negeren we, het houdt de lijn open
+            if(data.action === 'ping') return; // Heartbeat
 
             if(data.action === 'playSingle') {
                 stopAllMainTracks(true); 
@@ -543,7 +548,7 @@
             audioFiles.leader.addEventListener('timeupdate', () => { if(audioFiles.leader.duration) els.progLeader.style.width = (audioFiles.leader.currentTime/audioFiles.leader.duration)*100 + '%'; });
             audioFiles.leader.addEventListener('ended', () => {
                 els.progLeader.style.width = '0%'; els.leader.classList.remove('playing');
-                playSingle(audioFiles.bumper, els.bumper, null, false, true); // True = Skip broadcast
+                playSingle(audioFiles.bumper, els.bumper, null, false, true); 
             });
         }
         els.bumper.addEventListener('click', () => { stopAllMainTracks(); playSingle(audioFiles.bumper, els.bumper); });
