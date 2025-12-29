@@ -200,33 +200,33 @@
         <div class="modal-content">
             <h2>Remote Connect</h2>
             <div id="remote-menu">
-                <button class="modal-btn btn-host" onclick="setupHost()">Host (Controle)</button>
-                <button class="modal-btn btn-join" onclick="setupJoin()">Join (Ontvanger)</button>
+                <button class="modal-btn btn-host" id="btn-host-setup">Host (Controle)</button>
+                <button class="modal-btn btn-join" id="btn-join-setup">Join (Ontvanger)</button>
             </div>
             <div id="connected-menu" class="hidden">
                 <p style="color: #2ecc71; font-weight: bold;">Status: Verbonden ✅</p>
-                <button class="modal-btn btn-disconnect" onclick="disconnectRemote()">Verbinding Verbreken</button>
-                <button class="modal-btn btn-cancel" onclick="closeModal()">Sluiten</button>
+                <button class="modal-btn btn-disconnect" id="btn-remote-disconnect">Verbinding Verbreken</button>
+                <button class="modal-btn btn-cancel" id="btn-modal-close">Sluiten</button>
             </div>
             <div id="host-screen" class="hidden">
                 <p>Deel deze code:</p>
                 <div class="code-display" id="host-code-display">...</div>
                 <p id="host-status" style="font-size: 0.8rem; color: #aaa;">Wachten op verbinding...</p>
-                <button class="modal-btn btn-back" onclick="showRemoteMenu()">Terug</button>
+                <button class="modal-btn btn-back" id="btn-host-back">Terug</button>
             </div>
             <div id="join-screen" class="hidden">
                 <p>Voer Host code in:</p>
                 <input type="text" id="join-code-input" class="code-input" placeholder="CODE" maxlength="4">
-                <button class="modal-btn btn-join" onclick="connectToHost()">Verbinden</button>
-                <button class="modal-btn btn-back" onclick="showRemoteMenu()">Terug</button>
+                <button class="modal-btn btn-join" id="btn-join-connect">Verbinden</button>
+                <button class="modal-btn btn-back" id="btn-join-back">Terug</button>
             </div>
-            <button class="modal-btn btn-cancel" id="btn-main-cancel" onclick="cancelAndClose()">Annuleren</button>
+            <button class="modal-btn btn-cancel" id="btn-main-cancel">Annuleren</button>
         </div>
     </div>
 
     <div id="client-start-screen" class="hidden">
         <h1 style="color:var(--text-color); margin-bottom: 20px;">Klaar voor ontvangst</h1>
-        <button class="pulse-btn" onclick="activateClientAudio()">KLIK OM TE STARTEN</button>
+        <button class="pulse-btn" id="btn-client-start">KLIK OM TE STARTEN</button>
         <p style="color:var(--text-color); margin-top:20px; opacity:0.7;">Wacht op signaal...</p>
     </div>
 
@@ -234,7 +234,7 @@
         <div class="settings-bar">
             <div class="settings-left">
                 <button class="icon-btn" id="btn-theme-toggle"><span class="material-symbols-rounded" id="theme-icon">brightness_auto</span></button>
-                <button class="icon-btn" id="btn-remote-toggle" onclick="openModal()"><span class="material-symbols-rounded" id="remote-icon">cast</span></button>
+                <button class="icon-btn" id="btn-remote-toggle"><span class="material-symbols-rounded" id="remote-icon">cast</span></button>
             </div>
             <div class="volume-control">
                 <div id="btn-mute-toggle" style="cursor: pointer;"><span class="material-symbols-rounded" id="volume-icon">volume_up</span></div>
@@ -448,7 +448,7 @@
             else if(data.action === 'stopAll') stopAllMainTracks(true);
             else if(data.action === 'clockStart') startClockLogic(true);
             else if(data.action === 'clockStop') stopClockLogic(true);
-            else if(data.action === 'sfx') playSFX(sfxPaths[data.payload], true);
+            else if(data.action === 'sfx') playSFX(data.payload, true);
             else if(data.action === 'autoStopSet') {
                 autoStopDuration = data.payload;
                 els.autoStopBtns.forEach(b => b.classList.toggle('active', parseInt(b.dataset.time) === autoStopDuration));
@@ -504,6 +504,19 @@
             volumeIcon: document.getElementById('volume-icon'),
             muteBtn: document.getElementById('btn-mute-toggle')
         };
+
+        // Event listeners for modal and remote buttons
+        document.getElementById('btn-remote-toggle').addEventListener('click', openModal);
+        document.getElementById('btn-host-setup').addEventListener('click', setupHost);
+        document.getElementById('btn-join-setup').addEventListener('click', setupJoin);
+        document.getElementById('btn-remote-disconnect').addEventListener('click', disconnectRemote);
+        document.getElementById('btn-modal-close').addEventListener('click', closeModal);
+        document.getElementById('btn-host-back').addEventListener('click', showRemoteMenu);
+        document.getElementById('btn-join-connect').addEventListener('click', connectToHost);
+        document.getElementById('btn-join-back').addEventListener('click', showRemoteMenu);
+        document.getElementById('btn-main-cancel').addEventListener('click', cancelAndClose);
+        document.getElementById('btn-client-start').addEventListener('click', activateClientAudio);
+
 
         function updateVolumeIcon(vol) {
             els.volumeIcon.innerText = vol === 0 ? 'volume_off' : (vol < 0.5 ? 'volume_down' : 'volume_up');
@@ -561,12 +574,13 @@
             stopSingle(audioFiles.stopklok, els.stop);
             if(!isRemote) sendRemote('stopAll', null);
         }
-        function playSFX(path, isRemote = false) {
+        function playSFX(key, isRemote = false) {
             activateWakeLock();
-            const sfx = new Audio(path); sfx.preload = 'auto'; sfx.volume = globalVolume; sfx.play();
+            const sfx = sfxCache[key].cloneNode();
+            sfx.volume = globalVolume;
+            sfx.play().catch(e => console.error(e));
             if(!isRemote && isHost) {
-                let key = Object.keys(sfxPaths).find(k => sfxPaths[k] === path);
-                if(key) sendRemote('sfx', key);
+                sendRemote('sfx', key);
             }
         }
 
@@ -587,8 +601,8 @@
         audioFiles.finale.addEventListener('ended', () => els.finale.classList.remove('playing'));
         
         els.clockTarget.addEventListener('click', () => { if (!audioFiles.clock.paused) stopClockLogic(); else startClockLogic(); });
-        els.juist.addEventListener('click', (e) => { e.stopPropagation(); playSFX(sfxPaths.juist); });
-        els.fout.addEventListener('click', (e) => { e.stopPropagation(); playSFX(sfxPaths.fout); });
+        els.juist.addEventListener('click', (e) => { e.stopPropagation(); playSFX('juist'); });
+        els.fout.addEventListener('click', (e) => { e.stopPropagation(); playSFX('fout'); });
         els.stop.addEventListener('click', (e) => { 
             e.stopPropagation(); stopClockLogic(); audioFiles.stopklok.volume = globalVolume; playSingle(audioFiles.stopklok, els.stop);
         });
