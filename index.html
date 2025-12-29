@@ -45,10 +45,7 @@
             padding: 8px 15px; border-radius: 12px; margin-bottom: 5px;
         }
         
-        /* FIX: Deze was ik vergeten! Hierdoor staan ze weer naast elkaar */
-        .settings-left {
-            display: flex; gap: 5px; align-items: center;
-        }
+        .settings-left { display: flex; gap: 5px; align-items: center; }
 
         .icon-btn {
             background: none; border: none; color: var(--text-color);
@@ -298,7 +295,7 @@
             }, 3000);
         }
 
-        // --- 2. REMOTE LOGIC (Met Heartbeat) ---
+        // --- 2. REMOTE LOGIC (Met Heartbeat & FIX voor Host control) ---
         let peer = null, conn = null, isHost = false, heartbeatInterval = null;
         const modal = document.getElementById('remote-modal');
         const remoteIcon = document.getElementById('remote-icon');
@@ -361,7 +358,10 @@
             
             if (peer) peer.destroy(); 
             peer = new Peer("sm-" + code);
-            peer.on('open', (id) => remoteIcon.innerText = "cast");
+            peer.on('open', (id) => {
+                remoteIcon.innerText = "cast";
+                isHost = true; // FIX: Deze was ik vergeten! Nu weet het script dat dit de host is.
+            });
             peer.on('connection', (connection) => {
                 conn = connection;
                 document.getElementById('host-status').innerText = "✅ Verbonden!";
@@ -404,12 +404,13 @@
             activateWakeLock();
         }
 
+        // FIX: '&& conn.open' weggehaald, soms is PeerJS iets trager met de status updaten
         function sendRemote(action, payload) {
-            if(isHost && conn && conn.open) conn.send({ action: action, payload: payload });
+            if(isHost && conn) conn.send({ action: action, payload: payload });
         }
 
         function handleRemoteCommand(data) {
-            if(data.action === 'ping') return; // Heartbeat
+            if(data.action === 'ping') return; // Heartbeat negeren
 
             if(data.action === 'playSingle') {
                 stopAllMainTracks(true); 
