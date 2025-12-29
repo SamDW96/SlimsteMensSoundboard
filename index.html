@@ -278,13 +278,12 @@
             display: none; width: 100%; grid-template-columns: 1fr 1fr 1fr;
             gap: 10px; margin-top: auto; 
         }
-        /* FIX: Hogere en makkelijkere knoppen */
         .action-btn {
             border: none; border-radius: 8px; 
-            padding: 0; /* Padding weg, we gebruiken flex center */
-            min-height: 80px; /* VEEL HOGER */
+            padding: 0; 
+            min-height: 80px; 
             display: flex; align-items: center; justify-content: center;
-            font-size: 1.1rem; /* Iets grotere tekst */
+            font-size: 1.1rem; 
             font-weight: 800; text-transform: uppercase; color: white; cursor: pointer;
             box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: transform 0.1s;
         }
@@ -338,7 +337,7 @@
                 <button class="modal-btn btn-back" onclick="showRemoteMenu()">Terug</button>
             </div>
 
-            <button class="modal-btn btn-cancel" id="btn-main-cancel" onclick="closeModal()">Annuleren</button>
+            <button class="modal-btn btn-cancel" id="btn-main-cancel" onclick="cancelAndClose()">Annuleren</button>
         </div>
     </div>
 
@@ -350,7 +349,6 @@
 
 
     <div class="container">
-        
         <div class="settings-bar">
             <div class="settings-left">
                 <button class="icon-btn" id="btn-theme-toggle" title="Wissel thema">
@@ -422,39 +420,40 @@
         function openModal() { 
             modal.classList.remove('hidden'); 
             
-            // Check status en toon juiste scherm
             const menu = document.getElementById('remote-menu');
             const connectedMenu = document.getElementById('connected-menu');
             const cancelBtn = document.getElementById('btn-main-cancel');
             
-            // Verberg alle subschermen voor de zekerheid
             document.getElementById('host-screen').classList.add('hidden');
             document.getElementById('join-screen').classList.add('hidden');
 
             if (peer && !peer.destroyed && conn && conn.open) {
-                // We zijn verbonden
+                // Verbonden
                 menu.classList.add('hidden');
                 connectedMenu.classList.remove('hidden');
-                cancelBtn.classList.add('hidden'); // Annuleren knop weg als we verbonden zijn
+                cancelBtn.classList.add('hidden'); 
             } else {
-                // We zijn niet verbonden
+                // Niet verbonden
                 menu.classList.remove('hidden');
                 connectedMenu.classList.add('hidden');
                 cancelBtn.classList.remove('hidden');
             }
         }
 
+        // FIX: closeModal doet nu NIKS meer met de verbinding. Alleen UI.
         function closeModal() { 
-            // Als we aan het wachten zijn op een verbinding (host) of aan het connecten (join),
-            // maar er is GEEN actieve verbinding, dan verbreken we alles.
-            if (peer && (!conn || !conn.open)) {
-                 disconnectRemote();
-            }
             modal.classList.add('hidden'); 
         }
 
+        // FIX: Nieuwe functie specifiek voor de 'Annuleren' knop in het hoofdmenu
+        function cancelAndClose() {
+            if (peer && (!conn || !conn.open)) {
+                 disconnectRemote();
+            }
+            closeModal();
+        }
+
         function showRemoteMenu() {
-            // Als we teruggaan vanuit Host/Join scherm zonder verbinding, reset alles
             if (peer && (!conn || !conn.open)) {
                 disconnectRemote();
             }
@@ -476,7 +475,6 @@
             remoteIcon.innerText = "cast";
             remoteIcon.classList.remove('remote-active');
             
-            // Reset GUI alleen als modal open is
             if(!modal.classList.contains('hidden')) {
                 showRemoteMenu();
             }
@@ -485,7 +483,7 @@
         function setupHost() {
             document.getElementById('remote-menu').classList.add('hidden');
             document.getElementById('host-screen').classList.remove('hidden');
-            document.getElementById('btn-main-cancel').classList.add('hidden'); // Verberg grote annuleer knop, gebruik terug
+            document.getElementById('btn-main-cancel').classList.add('hidden');
             
             const code = Math.random().toString(36).substring(2, 6).toUpperCase();
             document.getElementById('host-code-display').innerText = code;
@@ -497,7 +495,6 @@
 
             peer.on('open', (id) => {
                 isHost = true;
-                // FIX: Icoon nog NIET groen maken, pas bij connectie
                 remoteIcon.innerText = "cast"; 
             });
 
@@ -506,11 +503,10 @@
                 document.getElementById('host-status').innerText = "✅ Verbonden!";
                 document.getElementById('host-status').style.color = "#2ecc71";
                 
-                // FIX: NU PAS GROEN MAKEN
                 remoteIcon.innerText = "cast_connected"; 
                 remoteIcon.classList.add('remote-active');
                 
-                closeModal(); 
+                closeModal(); // Dit verbreekt nu NIET meer de verbinding
                 setTimeout(() => sendRemote('volume', globalVolume), 500);
             });
             peer.on('error', (err) => alert("Connectie fout: " + err));
@@ -533,7 +529,7 @@
             peer.on('open', () => {
                 conn = peer.connect("sm-" + inputCode);
                 conn.on('open', () => {
-                    closeModal();
+                    closeModal(); // Dit verbreekt nu NIET meer de verbinding
                     document.getElementById('client-start-screen').classList.remove('hidden');
                 });
                 conn.on('data', (data) => handleRemoteCommand(data));
@@ -642,8 +638,6 @@
             muteBtn: document.getElementById('btn-mute-toggle')
         };
 
-        // --- VOLUME & MUTE LOGICA ---
-
         function updateVolumeIcon(vol) {
             if (vol === 0) els.volumeIcon.innerText = 'volume_off';
             else if (vol < 0.5) els.volumeIcon.innerText = 'volume_down';
@@ -654,25 +648,14 @@
             globalVolume = parseFloat(vol);
             els.volumeSlider.value = globalVolume;
             Object.values(audioFiles).forEach(audio => { audio.volume = globalVolume; });
-            
             updateVolumeIcon(globalVolume);
-
-            if (!fromRemote) {
-                sendRemote('volume', globalVolume);
-            }
+            if (!fromRemote) sendRemote('volume', globalVolume);
         }
 
-        els.volumeSlider.addEventListener('input', (e) => {
-            setGlobalVolume(e.target.value);
-        });
-
+        els.volumeSlider.addEventListener('input', (e) => setGlobalVolume(e.target.value));
         els.muteBtn.addEventListener('click', () => {
-            if (globalVolume > 0) {
-                lastVolume = globalVolume;
-                setGlobalVolume(0);
-            } else {
-                setGlobalVolume(lastVolume || 1.0);
-            }
+            if (globalVolume > 0) { lastVolume = globalVolume; setGlobalVolume(0); } 
+            else { setGlobalVolume(lastVolume || 1.0); }
         });
 
         // --- SETTINGS UI ---
@@ -680,7 +663,6 @@
         function updateTheme() {
             const root = document.documentElement;
             root.removeAttribute('data-theme');
-            
             if (currentThemeMode === 'auto') {
                 els.themeIcon.innerText = "brightness_auto";
                 if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
@@ -693,7 +675,6 @@
                 els.themeIcon.innerText = "dark_mode";
             }
         }
-        
         els.themeBtn.addEventListener('click', () => {
             if (currentThemeMode === 'auto') currentThemeMode = 'light';
             else if (currentThemeMode === 'light') currentThemeMode = 'dark';
@@ -709,10 +690,8 @@
             audioObj.volume = globalVolume;
             audioObj.currentTime = 0;
             audioObj.play().catch(e => console.error("Play error:", e));
-            
             if(btnElement) btnElement.classList.add('playing');
             if(progElement) progElement.style.width = '0%';
-
             if(!isRemote && isHost) {
                 let key = Object.keys(audioFiles).find(k => audioFiles[k] === audioObj);
                 if(key) sendRemote('playSingle', { key: key });
@@ -778,7 +757,6 @@
             if (!audioFiles.clock.paused) stopClockLogic();
             else startClockLogic();
         });
-        
         els.juist.addEventListener('click', (e) => { e.stopPropagation(); playSFX(sfxPaths.juist); });
         els.fout.addEventListener('click', (e) => { e.stopPropagation(); playSFX(sfxPaths.fout); });
         els.stop.addEventListener('click', (e) => { 
@@ -804,7 +782,6 @@
             });
         });
 
-        // Vars
         let clockInterval = null;
         let clockStartTime = null;
         let autoStopDuration = null; 
