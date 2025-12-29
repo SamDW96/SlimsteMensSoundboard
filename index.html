@@ -295,8 +295,10 @@
             }, 3000);
         }
 
-        // --- 2. REMOTE LOGIC (Met Heartbeat & FIX voor Host control) ---
+        // --- 2. REMOTE LOGIC (Fixed Refresh & Double Toast) ---
         let peer = null, conn = null, isHost = false, heartbeatInterval = null;
+        let isDisconnecting = false; // Flag om dubbele toasts te voorkomen
+
         const modal = document.getElementById('remote-modal');
         const remoteIcon = document.getElementById('remote-icon');
 
@@ -330,6 +332,7 @@
         function cancelAndClose() { if (peer && (!conn || !conn.open)) disconnectRemote(); closeModal(); }
 
         function showRemoteMenu() {
+            // FIX: Als we teruggaan naar menu, moet de interne status ook gereset worden
             if (peer && (!conn || !conn.open)) disconnectRemote();
             document.getElementById('host-screen').classList.add('hidden');
             document.getElementById('join-screen').classList.add('hidden');
@@ -338,15 +341,32 @@
             document.getElementById('btn-main-cancel').classList.remove('hidden');
         }
 
+        // FIX: Voorkom dubbele toasts en reset UI correct
         function disconnectRemote() {
+            if (isDisconnecting) return;
+            isDisconnecting = true;
+
             stopHeartbeat();
             if (conn) conn.close();
             if (peer) peer.destroy();
+            
             peer = null; conn = null; isHost = false;
-            remoteIcon.innerText = "cast"; remoteIcon.classList.remove('remote-active');
+            
+            remoteIcon.innerText = "cast"; 
+            remoteIcon.classList.remove('remote-active');
+            
             if(!modal.classList.contains('hidden')) showRemoteMenu();
             showToast("Verbinding verbroken", "info");
+
+            setTimeout(() => { isDisconnecting = false; }, 500);
         }
+
+        // FIX: The Polite Goodbye (Bij refresh sturen we een 'closing' bericht)
+        window.addEventListener('beforeunload', () => {
+            if(conn && conn.open) {
+                conn.send({ action: 'closing' });
+            }
+        });
 
         function setupHost() {
             document.getElementById('remote-menu').classList.add('hidden');
@@ -360,7 +380,7 @@
             peer = new Peer("sm-" + code);
             peer.on('open', (id) => {
                 remoteIcon.innerText = "cast";
-                isHost = true; // FIX: Deze was ik vergeten! Nu weet het script dat dit de host is.
+                isHost = true; // Nu zijn we host
             });
             peer.on('connection', (connection) => {
                 conn = connection;
@@ -369,6 +389,10 @@
                 closeModal(); startHeartbeat(); 
                 showToast("Client verbonden!", "success");
                 setTimeout(() => sendRemote('volume', globalVolume), 500);
+                
+                // Luister naar data van client (bijv. de 'closing' message)
+                conn.on('data', (data) => handleRemoteCommand(data));
+                conn.on('close', () => disconnectRemote());
             });
             peer.on('error', (err) => showToast("Fout: " + err, "error"));
             peer.on('disconnected', () => disconnectRemote()); 
@@ -393,7 +417,7 @@
                     showToast("Verbonden met Host", "success");
                 });
                 conn.on('data', (data) => handleRemoteCommand(data));
-                conn.on('close', () => { showToast("Host heeft verbroken", "error"); disconnectRemote(); });
+                conn.on('close', () => disconnectRemote());
             });
             peer.on('error', () => showToast("Kan host niet vinden", "error"));
         }
@@ -404,13 +428,18 @@
             activateWakeLock();
         }
 
-        // FIX: '&& conn.open' weggehaald, soms is PeerJS iets trager met de status updaten
         function sendRemote(action, payload) {
             if(isHost && conn) conn.send({ action: action, payload: payload });
         }
 
         function handleRemoteCommand(data) {
-            if(data.action === 'ping') return; // Heartbeat negeren
+            if(data.action === 'ping') return;
+            
+            // FIX: Als de ander ververst, ontvangen we dit bericht
+            if(data.action === 'closing') {
+                disconnectRemote();
+                return;
+            }
 
             if(data.action === 'playSingle') {
                 stopAllMainTracks(true); 
